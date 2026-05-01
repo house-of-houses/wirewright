@@ -142,6 +142,12 @@ _OPAMP2 = SymbolGeometry(
     bbox=(-32, 32, 32, 96),
 )
 
+_SW = SymbolGeometry(
+    name="sw",
+    pins={"A": (0, 16), "B": (0, 96), "NC+": (-48, 80), "NC-": (-48, 32)},
+    bbox=(-48, 16, 32, 96),
+)
+
 
 UNVERIFIED_SYMBOLS: frozenset[str] = frozenset()
 
@@ -165,6 +171,7 @@ _REGISTRY: dict[str, SymbolGeometry] = {
         _PMOS4,
         _OPAMP,
         _OPAMP2,
+        _SW,
     ]
 }
 

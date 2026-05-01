@@ -81,6 +81,7 @@ _SPICE_ORDER_BY_SYMBOL: dict[str, dict[str, int]] = {
     "pmos4": {"D": 1, "G": 2, "S": 3, "B": 4},
     "opamp": {"invin": 1, "noninvin": 2, "out": 3},
     "opamp2": {"In+": 1, "In-": 2, "V+": 3, "V-": 4, "OUT": 5},
+    "sw": {"A": 1, "B": 2, "NC+": 3, "NC-": 4},
 }
 
 

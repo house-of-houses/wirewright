@@ -35,7 +35,7 @@ uv run python tools/render_compare.py fixtures/medium    # A/B both placers (Pha
 
 See `docs/PLAN.md` for the full plan. Update the line below when a phase is complete.
 
-**Current phase**: 1 implementation complete; hand-drawn fixture round-trip deferred. Phase 2 starting.
+**Current phase**: 2 complete; Phase 3 (ELK baseline) starting.
 
 ## Workflow expectations
 

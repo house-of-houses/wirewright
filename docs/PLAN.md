@@ -50,6 +50,8 @@ The North Star: a deterministic, configurable placer that converts SPICE netlist
 
 **Depends on**: Phase 1.
 
+**Status**: complete in v0.1. LED/Zener/Schottky discrimination from `.MODEL D` parameters deferred (every `D` maps to symbol `diode`); 4-node Q (substrate) deferred (rejected with `ParseError`); local `.MODEL` inside `.SUBCKT` deferred (rejected with `ParseError`).
+
 ---
 
 ## Phase 3: ELK baseline
