@@ -1,6 +1,6 @@
 # Spec: Internal Representation (IR)
 
-**Status**: draft, will stabilize in Phase 1.
+**Status**: stable in v0.1.
 
 ## Overview
 
@@ -101,7 +101,7 @@ These are enforced by `ir.validate.validate(schematic)`:
 4. After placement, every `Component` has non-None `x`, `y`, `orientation`.
 5. After placement, every `Wire` endpoint sits on the LTspice grid (multiple of 16).
 6. After placement, no two component bounding boxes overlap.
-7. After placement, every component pin's absolute position (computed from `x`, `y`, `orientation`, and the symbol's pin offset) lies on the grid.
+7. Pin absolute positions are guaranteed to lie on the grid by construction: invariant 5 (component on grid) plus the registration-time assertion in `wirewright.symbols.builtin._assert_pin_offsets_grid_aligned` that every registered pin offset is a multiple of `LTSPICE_GRID`. Not separately checked at runtime in `validate_placed`.
 8. The net `"0"` (and any net with `is_ground=True`) is always treated as ground.
 
 ## What the IR does not capture (yet)
@@ -114,7 +114,23 @@ These are enforced by `ir.validate.validate(schematic)`:
 
 The IR is internal, not persisted. We do not version it. If you change the dataclass shapes, every other module must update. Since v0.x is pre-stable, this is acceptable. Post-1.0, IR changes will be ADR-tracked.
 
+## Round-trip lossy properties
+
+The IR ↔ `.asc` boundary preserves connectivity and component placement, but
+the following are NOT preserved across `emit_asc → parse_asc_text`:
+
+- `Net.is_power` flagging — there is no `.asc` convention to mark a net as
+  power, so all parsed nets have `is_power=False`.
+- `Schematic.nets` ordering — the emitter does not write nets explicitly;
+  the parser builds them in pin-iteration order.
+- `Component.spice_prefix` for standard prefixes (R/C/L/V/I/D/Q/M) — the
+  emitter only writes `SYMATTR Prefix` for non-standard prefixes since
+  LTspice infers standard ones from the symbol.
+- Free `TEXT` comments (`;`-prefixed) — no IR field in v0.1.
+
 ## Open questions
 
-- Should `Component` carry a `pin_directions` hint to inform the placer about signal flow? Likely yes for opamp `+/-/OUT`. Decided in Phase 3.
-- Should `Net` carry a `signal_kind` (audio, CV, gate, clock)? Probably not for v0.1; revisit if the pattern library needs it.
+Per ADR-0002, post-1.0 IR changes will be tracked by superseding ADRs. Both
+pin-direction hints (for opamp `+/-/OUT` signal flow) and signal-kind tags
+(audio/CV/gate) remain unscoped for v0.1; revisit if the pattern library
+needs them.

@@ -35,7 +35,7 @@ uv run python tools/render_compare.py fixtures/medium    # A/B both placers (Pha
 
 See `docs/PLAN.md` for the full plan. Update the line below when a phase is complete.
 
-**Current phase**: 0 (bootstrap)
+**Current phase**: 1 implementation complete; hand-drawn fixture round-trip deferred. Phase 2 starting.
 
 ## Workflow expectations
 

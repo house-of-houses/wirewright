@@ -1,6 +1,6 @@
 # Spec: LTspice .asc emitter
 
-**Status**: draft, will stabilize in Phase 1.
+**Status**: stable in v0.1.
 
 ## Overview
 
@@ -78,6 +78,19 @@ For deterministic diffs:
 2. FLAG lines, sorted by (x, y, net).
 3. SYMBOL blocks (each followed by its SYMATTR lines), sorted by component reference designator (R1, R2, ..., R10 → R1 R10 R2 with naive sort, so use natural sort on numeric suffix).
 4. TEXT lines, in the order they appeared in the input directives (preserves user intent).
+
+Wire endpoint order is NOT normalized — `Wire(80, 80, 80, 48)` and
+`Wire(80, 48, 80, 80)` are both emitted as written. Round-trip relies on the
+emitter's deterministic serialization order, not on canonical wire orientation.
+Wire normalization (smaller endpoint first) is a v0.2 spec change, not v0.1.
+
+## Round-trip lossy properties
+
+See `docs/specs/ir.md § Round-trip lossy properties` for the canonical list.
+Specifically the emitter does not write `SYMATTR Prefix` for standard prefixes
+(R/C/L/V/I/D/Q/M) since LTspice infers them, and does not write any explicit
+net declarations (nets are reconstructed from connectivity by the `.asc`
+parser).
 
 ## Open questions
 

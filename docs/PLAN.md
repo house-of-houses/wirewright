@@ -31,7 +31,8 @@ The North Star: a deterministic, configurable placer that converts SPICE netlist
 - `docs/specs/asc-emitter.md` is complete and stable.
 - The full IR (`Component`, `Net`, `Wire`, `Schematic`, `Pin`) is implemented with validation.
 - `src/wirewright/symbols/builtin.py` has accurate pin offsets verified against actual `.asy` files for: `res`, `cap`, `ind`, `npn`, `pnp`, `nmos`, `pmos`, `diode`, `opamp2`, `voltage`, `current`, `polcap`.
-- ASC emitter passes round-trip on all three fixtures (parse hand-drawn `.asc` → IR → emit `.asc` → opens in LTspice with same connectivity).
+- ASC emitter round-trip verified on synthetic Schematics (Phase 1 plan Task 4): components, wires, flags, directives, and connectivity isomorphism preserved. Tests in `tests/integration/test_round_trip.py`.
+- DEFERRED: hand-drawn `.asc` round-trip on the canonical fixtures (`divider.asc`, `tb303-envelope.asc`, `tb303-vco-integrated.asc`) is gated on user-author work in LTspice GUI. The hard-tier fixture additionally requires Phase 2 SPICE parser to land. Target: end-of-Phase-2 once `.asc` reference files have been authored.
 - A unit test hand-constructs a 2-resistor `Schematic`, emits an `.asc`, and the file opens in LTspice with the wires actually connected.
 
 **Depends on**: Phase 0.
