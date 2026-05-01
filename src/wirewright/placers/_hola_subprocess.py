@@ -32,7 +32,7 @@ import sys
 
 def main() -> int:
     data = json.load(sys.stdin)
-    from hola_graph import HolaGraph  # noqa: PLC0415
+    from hola_graph import HolaGraph
 
     g = HolaGraph()
     for node in data["nodes"]:
