@@ -18,7 +18,7 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
       - name: Install project
-        run: uv sync --extra dev
+        run: uv sync --extra dev --locked
       - name: Lint
         run: uv run ruff check
       - name: Format check

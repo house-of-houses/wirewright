@@ -29,7 +29,6 @@ ENV/
 
 # uv
 .uv-cache/
-uv.lock
 
 # Testing / coverage
 .pytest_cache/
@@ -57,5 +56,11 @@ package-lock.json
 *.net~
 *.asc~
 
+# Test fixtures — netlists and hand-drawn schematics are local-only.
+# READMEs in each tier directory remain tracked.
+tests/fixtures/**/*.net
+tests/fixtures/**/*.asc
+
 # Claude Code local state (keep .claude/ structure but ignore runtime)
 .claude/local/
+.claude/settings.local.json

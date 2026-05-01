@@ -1,10 +1,10 @@
 """SPICE / LTspice netlist parser.
 
-PHASE 2. Currently a minimal stub that handles the simplest possible cases
-(R, C, V elements, no subcircuits) so that the demo and basic tests work.
-The full implementation lands in Phase 2.
-
-See docs/specs/netlist-parser.md for the contract.
+See ``docs/specs/netlist-parser.md`` for the contract. Supports the
+two-terminal passives (R/C/L), diodes (D), independent sources (V/I),
+behavioral sources (B = bv/bi), and four-terminal voltage-controlled voltage
+sources (E). Subcircuits, BJTs, MOSFETs, and the remaining controlled-source
+prefixes (F/G/H) land in later phases.
 """
 
 from __future__ import annotations
@@ -31,19 +31,11 @@ def parse_spice_file(path: str | Path) -> Schematic:
 
 
 def parse_spice_text(text: str) -> Schematic:
-    """Parse a SPICE netlist string into IR.
-
-    PHASE 0 implementation: handles R, C, V on simple two-terminal cards only.
-    Anything more complex raises ParseError so that Phase 2 can replace this
-    cleanly.
-    """
+    """Parse a SPICE netlist string into IR."""
     schematic = Schematic()
     nets_seen: dict[str, Net] = {}
 
-    for raw_line_no, raw_line in enumerate(text.splitlines(), start=1):
-        line = raw_line.strip()
-        if not line or line.startswith("*"):
-            continue
+    for line_no, line in _preprocess(text):
         if line.startswith("."):
             schematic.directives.append(line)
             continue
@@ -52,16 +44,12 @@ def parse_spice_text(text: str) -> Schematic:
         if not tokens:
             continue
 
-        elem = tokens[0]
-        prefix = elem[0].upper()
+        ref = tokens[0]
+        prefix = ref[0].upper()
 
         if prefix in ("R", "C", "L"):
-            # FORMAT: <ref> <node1> <node2> <value> [more...]
-            if len(tokens) < 4:
-                raise ParseError(
-                    f"line {raw_line_no}: expected '<ref> <n1> <n2> <value>': {line!r}"
-                )
-            ref, n1, n2, value = tokens[0], tokens[1], tokens[2], tokens[3]
+            _expect_at_least(tokens, 4, line_no, line, "<ref> <n1> <n2> <value>")
+            n1, n2, value = tokens[1], tokens[2], tokens[3]
             symbol = {"R": "res", "C": "cap", "L": "ind"}[prefix]
             schematic.components.append(
                 Component(
@@ -74,12 +62,10 @@ def parse_spice_text(text: str) -> Schematic:
             )
             for n in (n1, n2):
                 _record_net(nets_seen, n)
+
         elif prefix == "V":
-            if len(tokens) < 4:
-                raise ParseError(
-                    f"line {raw_line_no}: expected '<ref> <n+> <n-> <value>': {line!r}"
-                )
-            ref, np, nn = tokens[0], tokens[1], tokens[2]
+            _expect_at_least(tokens, 4, line_no, line, "<ref> <n+> <n-> <value>")
+            np, nn = tokens[1], tokens[2]
             value = " ".join(tokens[3:])
             schematic.components.append(
                 Component(
@@ -92,14 +78,98 @@ def parse_spice_text(text: str) -> Schematic:
             )
             for n in (np, nn):
                 _record_net(nets_seen, n)
+
+        elif prefix == "D":
+            _expect_at_least(tokens, 4, line_no, line, "<ref> <n+> <n-> <model>")
+            na, nk, model = tokens[1], tokens[2], tokens[3]
+            schematic.components.append(
+                Component(
+                    ref=ref,
+                    symbol="diode",
+                    pins={"A": na, "K": nk},
+                    spice_prefix="D",
+                    spice_model=model,
+                )
+            )
+            for n in (na, nk):
+                _record_net(nets_seen, n)
+
+        elif prefix == "B":
+            _expect_at_least(tokens, 4, line_no, line, "<ref> <n+> <n-> V=<expr>")
+            np, nn = tokens[1], tokens[2]
+            value = " ".join(tokens[3:])
+            symbol = "bi" if value[:2].upper() == "I=" else "bv"
+            schematic.components.append(
+                Component(
+                    ref=ref,
+                    symbol=symbol,
+                    value=value,
+                    pins={"+": np, "-": nn},
+                    spice_prefix="B",
+                )
+            )
+            for n in (np, nn):
+                _record_net(nets_seen, n)
+
+        elif prefix == "E":
+            _expect_at_least(tokens, 6, line_no, line, "<ref> <n+> <n-> <nc+> <nc-> <gain>")
+            np, nn, ncp, ncn = tokens[1], tokens[2], tokens[3], tokens[4]
+            value = " ".join(tokens[5:])
+            schematic.components.append(
+                Component(
+                    ref=ref,
+                    symbol="e",
+                    value=value,
+                    pins={"+": np, "-": nn, "P": ncp, "N": ncn},
+                    spice_prefix="E",
+                )
+            )
+            for n in (np, nn, ncp, ncn):
+                _record_net(nets_seen, n)
+
         else:
             raise ParseError(
-                f"line {raw_line_no}: element '{prefix}' not supported in v0.0.1 "
-                f"(see docs/PLAN.md, Phase 2). Line: {line!r}"
+                f"line {line_no}: element '{prefix}' not yet supported "
+                f"(see docs/specs/netlist-parser.md). Line: {line!r}"
             )
 
     schematic.nets = list(nets_seen.values())
     return schematic
+
+
+def _preprocess(text: str) -> list[tuple[int, str]]:
+    """Return ``(first_line_no, joined_line)`` tuples after applying SPICE rules.
+
+    - Comment lines (``*``) are dropped without affecting continuation chains.
+    - Blank lines break continuation chains.
+    - Lines starting with ``+`` are appended (separated by a single space) to
+      the prior logical line; an orphan ``+`` raises :class:`ParseError`.
+    """
+    out: list[tuple[int, str]] = []
+    can_continue = False
+    for raw_no, raw in enumerate(text.splitlines(), start=1):
+        stripped = raw.strip()
+        if not stripped:
+            can_continue = False
+            continue
+        if stripped.startswith("*"):
+            continue
+        if stripped.startswith("+"):
+            if not can_continue:
+                raise ParseError(f"line {raw_no}: orphan '+' continuation")
+            prior_no, prior = out[-1]
+            out[-1] = (prior_no, prior + " " + stripped[1:].strip())
+            continue
+        out.append((raw_no, stripped))
+        can_continue = True
+    return out
+
+
+def _expect_at_least(
+    tokens: list[str], required: int, line_no: int, line: str, expected: str
+) -> None:
+    if len(tokens) < required:
+        raise ParseError(f"line {line_no}: expected '{expected}': {line!r}")
 
 
 def _record_net(seen: dict[str, Net], name: str) -> None:

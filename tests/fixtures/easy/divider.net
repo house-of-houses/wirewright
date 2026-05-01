@@ -1,7 +1,0 @@
-* wirewright bootstrap fixture: voltage divider
-* Two resistors in series between VIN and GND.
-V1 vin 0 DC 5
-R1 vin n1 10k
-R2 n1 0 10k
-.tran 1m
-.end

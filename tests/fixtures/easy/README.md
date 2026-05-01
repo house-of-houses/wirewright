@@ -1,14 +1,20 @@
-# Easy fixture: simple op-amp filter
+# Easy fixtures
 
-Drop in this directory:
+≤8 components, no discrete transistors, no subcircuits. Smoke tests for the
+pipeline. If a placer can't render these readably, something is fundamentally
+wrong.
 
-- `circuit.net` - the SPICE netlist
-- `circuit.asc` - your hand-drawn LTspice schematic (the visual reference)
-- `description.md` - what the circuit does, what makes it "easy"
+## Contents
 
-Suggested circuit: single-stage Sallen-Key low-pass filter or similar
-under 10 components. No discrete transistors, just resistors, capacitors,
-and one op-amp subcircuit.
+| File | Components | Element types |
+|------|-----------:|---------------|
+| `divider.net` | 3 | R, V |
+| `tb303-slide.net` | 5 | R, C, V |
+| `tb303-vcf-8hz-peak.net` | 8 | R, V, E, B |
+| `tb303-vco-full.net` | 8 | B, R, V (behavioral, no transistors) |
 
-The easy fixture is the smoke test. If a placer can't render this readably,
-something is fundamentally wrong.
+## Canonical Phase 1 round-trip target
+
+`divider.net` is the canonical "easy" reference. A hand-drawn `divider.asc`
+authored in LTspice during Phase 1 is the visual round-trip target (parse
+hand-drawn `.asc` → IR → emit `.asc` → diff structurally).

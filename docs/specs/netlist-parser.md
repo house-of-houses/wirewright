@@ -8,7 +8,7 @@ Parses a SPICE / LTspice netlist file into a `Schematic` IR with components and 
 
 ## Scope
 
-In scope: SPICE element cards (R, C, L, D, Q, M, V, I, X), `.SUBCKT`/`.ENDS`, `.PARAM`, `.MODEL`, `.OPTIONS`, comments. LTspice-specific directives (`.tran`, `.ac`, `.dc`, `.lib`, `.include`) preserved as raw `Schematic.directives`.
+In scope: SPICE element cards (R, C, L, D, Q, M, V, I, B, E, F, G, H, X), `.SUBCKT`/`.ENDS`, `.PARAM`, `.MODEL`, `.OPTIONS`, comments, `+` line continuations. LTspice-specific directives (`.tran`, `.ac`, `.dc`, `.lib`, `.include`, `.meas`) preserved as raw `Schematic.directives`.
 
 Out of scope for v0.1: hierarchy preservation (subcircuits are flattened), parameter expression evaluation (passed through as opaque strings), `.MODEL` resolution (recorded but not used by the placer), bus/vector syntax.
 
@@ -24,7 +24,57 @@ Out of scope for v0.1: hierarchy preservation (subcircuits are flattened), param
 | `M` | `nmos` or `pmos` based on model | 4-pin MOSFET (D, G, S, B) |
 | `V` | `voltage` | DC, AC, PULSE, SIN, etc. |
 | `I` | `current` | |
+| `B` | `bv` (V=expr) or `bi` (I=expr) | 2-pin behavioral source |
+| `E` | `e` | 4-pin VCVS: out+, out-, ctrl+, ctrl- |
+| `G` | `g` | 4-pin VCCS, same pin order as E |
+| `F` | `f` | CCCS (current-controlled current source) |
+| `H` | `h` | CCVS (current-controlled voltage source) |
 | `X` | (subcircuit, flattened) | recursively expanded |
+
+## IR pin names per element
+
+The IR `Component.pins` dict maps an *IR pin name* to a net. The IR pin names
+match the corresponding `.asy` file's `PINATTR PinName` whenever the symbol
+has a clear convention; otherwise SpiceOrder index is used. This lets the
+emitter look up the offset in `wirewright.symbols.builtin` without an extra
+mapping layer.
+
+| Element | SPICE card form | IR pin names |
+|---------|-----------------|--------------|
+| `R`/`C`/`L` | `<ref> n1 n2 value` | `"1"`, `"2"` |
+| `D` | `<ref> n+ n- model` | `"A"` (anode), `"K"` (cathode) |
+| `Q` | `<ref> nc nb ne model` | `"C"`, `"B"`, `"E"` |
+| `M` | `<ref> nd ng ns nb model` | `"D"`, `"G"`, `"S"`, `"B"` |
+| `V`/`I` | `<ref> n+ n- value` | `"+"`, `"-"` |
+| `B` | `<ref> n+ n- V=expr` *or* `I=expr` | `"+"`, `"-"` |
+| `E`/`G` | `<ref> n+ n- nc+ nc- gain` | `"+"`, `"-"`, `"P"`, `"N"` |
+
+The full `B` card body after the `<ref> n+ n-` prefix (including `V=` or `I=`
+and the entire arbitrary expression, with continuations joined) is preserved
+verbatim in `Component.value`. The emitter writes it back unchanged.
+
+## Line continuations
+
+A line whose first non-whitespace character is `+` is a continuation of the
+previous logical line. Continuations are joined with a single space before
+tokenization. This is the SPICE convention and is required for behavioral
+sources and any other element whose value spans multiple lines.
+
+```
+B_GATE GATE 0 V=5*(
++ (time>=0 & time<50m) +
++ (time>=500m & time<600m))
+```
+
+becomes one logical line equivalent to:
+
+```
+B_GATE GATE 0 V=5*( (time>=0 & time<50m) + (time>=500m & time<600m))
+```
+
+before parsing. Comment lines (`*`) are skipped *before* continuation joining,
+so a `*` between continuations does not break the chain. Blank lines do break
+the chain.
 
 ## Subcircuit handling (v0.1: flatten)
 
