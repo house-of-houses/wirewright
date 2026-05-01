@@ -194,8 +194,11 @@ def test_round_trip_with_unflagged_nets_preserves_connectivity_isomorphism() -> 
     sig_b = _connectivity_signature(parsed)
 
     # Same multiset of net signatures (frozensets of (ref, pin) tuples)
-    # implies a bijection exists by construction.
-    assert sorted(sig_a.values()) == sorted(sig_b.values())
+    # implies a bijection exists by construction. Sort by canonicalized
+    # tuple-of-tuples since frozenset's `<` is subset, not lex order.
+    multiset_a = sorted(tuple(sorted(s)) for s in sig_a.values())
+    multiset_b = sorted(tuple(sorted(s)) for s in sig_b.values())
+    assert multiset_a == multiset_b
 
 
 # -------------------- Lossy-property documentation tests --------------------

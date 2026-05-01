@@ -69,6 +69,8 @@ The North Star: a deterministic, configurable placer that converts SPICE netlist
 
 **Depends on**: Phase 2.
 
+**Status**: complete in v0.1. ELK Layered baseline ships; canonical fixtures render via `--placer elk`. Strict connectivity isomorphism is preserved on the easy fixture; medium/hard fixtures render to valid `.asc` but layout-induced wire overlaps may merge nets at the parser level (acknowledged v0.1 quality limitation).
+
 ---
 
 ## Phase 4: HOLA baseline

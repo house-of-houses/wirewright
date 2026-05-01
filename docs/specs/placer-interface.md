@@ -1,6 +1,6 @@
 # Spec: Placer interface
 
-**Status**: draft. Will be finalized after Phase 3 (when we have real ELK experience).
+**Status**: stable in v0.1.
 
 ## Overview
 
@@ -52,7 +52,22 @@ This applies to all back ends.
 
 ## Hints recognized by specific back ends
 
-(To be filled in as back ends are implemented. Will move to per-back-end docs in Phase 3.)
+### naive
+- Does not recognize any hints. Lays out in input order on a regular grid.
+
+### elk
+- `direction`: maps to `elk.direction` (LR→RIGHT, RL→LEFT, TB→DOWN, BT→UP). Default RIGHT.
+- `aspect_ratio`, `pinned`: not yet supported in v0.1; ignored silently. v0.3+.
+
+ELK uses Eclipse Layout Kernel via a Node.js subprocess (`tools/elk-bridge/`).
+Failure modes specific to ELK:
+- `node` not on PATH → `PlacerEngineError` with install instructions.
+- `tools/elk-bridge/node_modules/` missing → `PlacerEngineError`.
+- ELK subprocess timeout (default 30s) → `PlacerEngineError`.
+- ELK rejects the graph (e.g., port-constraint violation) → `PlacerEngineError` wrapping the bridge's stderr.
+
+### hola
+- Phase 4 deliverable; currently raises `NotImplementedError`.
 
 ## Failure modes
 

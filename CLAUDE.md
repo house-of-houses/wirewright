@@ -35,7 +35,7 @@ uv run python tools/render_compare.py fixtures/medium    # A/B both placers (Pha
 
 See `docs/PLAN.md` for the full plan. Update the line below when a phase is complete.
 
-**Current phase**: 2 complete; Phase 3 (ELK baseline) starting.
+**Current phase**: 3 complete; Phase 4 (HOLA baseline) starting.
 
 ## Workflow expectations
 
