@@ -30,6 +30,13 @@ Out of scope for v0.1: hierarchy preservation (subcircuits are flattened), param
 | `F` | `f` | CCCS (current-controlled current source) |
 | `H` | `h` | CCVS (current-controlled voltage source) |
 | `X` | (subcircuit, flattened) | recursively expanded |
+| `S` | `sw` | 4-pin voltage-controlled switch |
+
+### v0.1 limitations
+
+- 4-node Q cards (BJTs with explicit substrate node) raise `ParseError`. Use the 3-node form `Q<ref> nc nb ne <model>`.
+- Local `.MODEL` declarations inside `.SUBCKT` bodies raise `ParseError`. Declare models at top level.
+- LED/Zener/Schottky discrimination from `.MODEL D(...)` parameters is deferred; every `D` card maps to symbol `diode` regardless of model parameters.
 
 ## IR pin names per element
 
@@ -48,6 +55,7 @@ mapping layer.
 | `V`/`I` | `<ref> n+ n- value` | `"+"`, `"-"` |
 | `B` | `<ref> n+ n- V=expr` *or* `I=expr` | `"+"`, `"-"` |
 | `E`/`G` | `<ref> n+ n- nc+ nc- gain` | `"+"`, `"-"`, `"P"`, `"N"` |
+| `S` | `<ref> n+ n- nc+ nc- model` | `"A"`, `"B"`, `"NC+"`, `"NC-"` (matches `sw.asy`) |
 
 The full `B` card body after the `<ref> n+ n-` prefix (including `V=` or `I=`
 and the entire arbitrary expression, with continuations joined) is preserved
@@ -78,14 +86,15 @@ the chain.
 
 ## Subcircuit handling (v0.1: flatten)
 
-When the parser encounters `X<name> n1 n2 ... <subckt_name>`, it:
+When the parser encounters `X<ref> n1 ... nN <subckt_name>`, it:
 
 1. Looks up the `.SUBCKT` definition by name.
-2. Renames internal nets in the subcircuit to be unique (e.g. `n001` inside `LM358_inst3` becomes `LM358_inst3.n001`).
-3. Maps the subcircuit's external port nets to the actual nets at the call site.
-4. Inlines all the resulting components into the parent schematic.
+2. Constructs a namespace prefix from `ref[1:] + "."` — i.e., the leading `X` is stripped, then a dot is appended (e.g. `XU2` → `U2.`, `XU_SQR` → `U_SQR.`).
+3. Renames every internal subckt component reference and internal net by prepending the prefix (`R5` inside the subckt → `U2.R5`; internal net `n001` → `U2.n001`).
+4. Maps subckt external port nets to the call-site nets (port `IN+` → call-site arg 1, etc.). The literal nets `0` and `gnd` are normalized to `0` regardless of the namespace.
+5. Inlines all the resulting components into the parent schematic.
 
-Recursive subcircuits are supported. Self-recursion (subcircuit calls itself) is detected and rejected with a clear error.
+Recursive subcircuits are supported (a subckt may instantiate other subckts). Self-recursion — a subckt calling itself, directly or transitively through any chain — is rejected with `ParseError`. Nested `.SUBCKT` definitions and unclosed `.SUBCKT` blocks are also rejected with `ParseError`.
 
 ## Net naming
 
