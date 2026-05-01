@@ -92,6 +92,12 @@ _BV = SymbolGeometry(
     bbox=(-32, 16, 32, 96),
 )
 
+_BI = SymbolGeometry(
+    name="bi",
+    pins={"+": (0, 0), "-": (0, 80)},
+    bbox=(-32, 0, 32, 80),
+)
+
 _E = SymbolGeometry(
     name="e",
     pins={"+": (0, 16), "-": (0, 96), "P": (-48, 32), "N": (-48, 80)},
@@ -164,6 +170,7 @@ _REGISTRY: dict[str, SymbolGeometry] = {
         _VOLTAGE,
         _CURRENT,
         _BV,
+        _BI,
         _E,
         _NMOS,
         _NMOS4,

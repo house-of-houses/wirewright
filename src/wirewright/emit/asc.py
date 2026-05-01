@@ -114,6 +114,16 @@ def _compute_sheet_size(s: Schematic) -> tuple[int, int]:
 _NATURAL_RE = re.compile(r"(\d+)")
 
 
-def _natural_sort_key(s: str) -> list[object]:
-    """Sort 'R10' after 'R2', not before."""
-    return [int(t) if t.isdigit() else t.lower() for t in _NATURAL_RE.split(s) if t]
+def _natural_sort_key(s: str) -> list[str]:
+    """Sort 'R10' after 'R2'; type-stable across refs that start with digits.
+
+    Numeric runs are zero-padded so lexicographic comparison gives natural
+    ordering. Returning a uniform ``list[str]`` avoids ``TypeError`` when
+    flattened-subckt refs like ``"1.B_OTA"`` start with a digit (would
+    otherwise mix int and str in the key list).
+    """
+    return [
+        t.zfill(8) if t.isdigit() else t.lower()
+        for t in _NATURAL_RE.split(s)
+        if t
+    ]
