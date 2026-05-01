@@ -45,14 +45,15 @@ canonical fixtures and inspecting the resulting `.asc` files in LTspice.
   routing produces visible spaghetti on the dense expo-converter subgraph
   (8 nets × N pins each, all routed independently), but the structure is
   recoverable.
-- **HOLA** **aborts** with `Assertion failed: u != nullptr, file faces.cpp,
-  line 185`. This is a known v0.1 limitation: HOLA's `identifyExternalFace`
-  step in `libdialect` requires graph properties (likely 2-connectivity)
-  the canonical hard fixture doesn't satisfy. NetworkX confirms the graph
-  is planar, but planarity isn't the only constraint. Python cannot catch
-  C++ aborts; subprocess isolation deferred to v0.2.
+- **HOLA** raises `PlacerEngineError` (HOLA's C++ asserts in
+  `faces.cpp::identifyExternalFace`; subprocess isolation catches the
+  abort gracefully but the layout itself isn't possible). NetworkX
+  confirms the graph is planar, but planarity isn't the only constraint
+  HOLA imposes.
 
-**Verdict for hard:** ELK is the only working option in v0.1.
+**Verdict for hard:** HOLA wins on `tb303-vco-expo*` and `tb303-voice-chain`
+(transistor-heavy but biconnectable). For `tb303-vco-integrated` and the
+two `tb303-vco-saw-cliptop` variants, fall back to ELK.
 
 ## Recommendation by circuit kind
 
@@ -82,12 +83,26 @@ constraints (libdialect's port-aware variant) doesn't realize them in v0.1.
 
 ## Recommendation as of v0.1
 
-**Use `--placer elk` by default.** Switch to `--placer hola` only when:
-1. The circuit is biconnected (no cut vertices), AND
-2. You expect symmetry to dominate (diff pair, current mirror, balanced
-   filter), AND
-3. Wire-routing quality is acceptable as-is (or you'll edit by hand
-   afterward).
+**Use `--placer hola` as the default for TB-303-class analog circuits.**
+Empirical visual inspection across the canonical fixtures showed HOLA
+producing more compact, more symmetric layouts than ELK's layered output
+on this domain. ELK remains the fallback for the 3 fixtures HOLA cannot
+lay out (its C++ asserts in `faces.cpp::identifyExternalFace` on graphs
+that satisfy planarity but violate other internal constraints):
+
+- `tb303-vco-saw-cliptop`
+- `tb303-vco-saw-cliptop-bottom`
+- `tb303-vco-integrated`
+
+For those, use `--placer elk`. With subprocess isolation (v0.1 ships this),
+HOLA failures are now graceful `PlacerEngineError`s rather than process
+crashes, so you can probe HOLA first and fall back without retry logic.
+
+When ELK might still win:
+1. Strongly directional signal chains (CV processor, filter chain) where
+   layered Sugiyama maps cleanly onto the signal-flow direction.
+2. Circuits HOLA cannot handle (the 3 listed above, until v0.2 lands a
+   workaround or upstream fix in libdialect).
 
 For Eurorack-class circuits (Phase 5 territory), pattern recognition
 (diff-pair templates, current-mirror templates) feeding hints into either

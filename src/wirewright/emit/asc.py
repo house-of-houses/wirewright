@@ -122,8 +122,4 @@ def _natural_sort_key(s: str) -> list[str]:
     flattened-subckt refs like ``"1.B_OTA"`` start with a digit (would
     otherwise mix int and str in the key list).
     """
-    return [
-        t.zfill(8) if t.isdigit() else t.lower()
-        for t in _NATURAL_RE.split(s)
-        if t
-    ]
+    return [t.zfill(8) if t.isdigit() else t.lower() for t in _NATURAL_RE.split(s) if t]

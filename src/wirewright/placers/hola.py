@@ -9,6 +9,10 @@ via :func:`wirewright.routing.orthogonal.l_shape`.
 Power and ground nets are emitted as global rails (FLAGs at every connecting
 pin), not HOLA edges.
 
+The actual HOLA layout call runs in a subprocess (see
+``_hola_subprocess.py``) so HOLA's C++ asserts (which abort the process)
+don't kill the parent — they surface as :class:`PlacerEngineError`.
+
 Reference:
     Kieffer, Dwyer, Marriott, Wybrow.
     "HOLA: Human-like Orthogonal Network Layout."
@@ -18,6 +22,9 @@ Reference:
 from __future__ import annotations
 
 import copy
+import json
+import subprocess
+import sys
 from typing import Any
 
 from wirewright.ir.model import Flag, Schematic, Wire
@@ -27,15 +34,15 @@ from wirewright.routing.orthogonal import l_shape, snap_to_grid
 from wirewright.symbols.builtin import absolute_pin_position, symbol_geometry
 
 
-def _stitch_disconnected_components(
-    g: Any, all_refs: list[str], existing_pairs: set[tuple[str, str]]
-) -> None:
-    """Add virtual edges between disconnected components so HOLA gets a connected graph.
+def _stitching_edges(
+    all_refs: list[str], existing_pairs: set[tuple[str, str]]
+) -> list[tuple[str, str]]:
+    """Compute virtual edges that stitch disconnected components into one graph.
 
-    HOLA's stress-majorization aborts on disconnected input. We compute the
-    connected components implied by ``existing_pairs`` and add one virtual edge
-    per pair of components to chain them together. Components with no edges
-    (isolated nodes) are also chained in.
+    HOLA's stress-majorization aborts on disconnected input. Returns a list of
+    extra ``(a, b)`` edges that, added to the connectivity, produce a single
+    connected component. Components with no edges (isolated nodes) are chained
+    in along with the rest.
     """
     from collections import defaultdict
 
@@ -60,22 +67,39 @@ def _stitch_disconnected_components(
             stack.extend(adj[n])
         components.append(comp)
 
-    # Chain one representative from each component to the previous one.
-    for i in range(1, len(components)):
-        a, b = components[i - 1][0], components[i][0]
-        g.connect(a, b)
+    return [(components[i - 1][0], components[i][0]) for i in range(1, len(components))]
 
 
-def _is_planar(all_refs: list[str], pairs: set[tuple[str, str]]) -> bool:
-    """Quick planarity check via NetworkX. HOLA requires planar input."""
-    import networkx as nx  # type: ignore[import-untyped]
-
-    graph = nx.Graph()
-    graph.add_nodes_from(all_refs)
-    for a, b in pairs:
-        graph.add_edge(a, b)
-    is_planar, _ = nx.check_planarity(graph)
-    return bool(is_planar)
+def _run_hola_subprocess(
+    nodes: list[dict[str, Any]], edges: list[tuple[str, str]]
+) -> dict[str, dict[str, float]]:
+    """Run the HOLA subprocess; raise ``PlacerEngineError`` on abort or error."""
+    payload = json.dumps({"nodes": nodes, "edges": [list(e) for e in edges]})
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-m", "wirewright.placers._hola_subprocess"],
+            input=payload,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise PlacerEngineError(f"hola subprocess timed out after {e.timeout}s") from e
+    if proc.returncode != 0:
+        # Negative returncode = signal (e.g., -6 = SIGABRT from C++ assertion).
+        signal_hint = (
+            f"signal {-proc.returncode}" if proc.returncode < 0 else f"exit {proc.returncode}"
+        )
+        stderr_tail = proc.stderr.strip().splitlines()[-3:]
+        raise PlacerEngineError(
+            f"hola subprocess failed ({signal_hint}); HOLA cannot lay out this graph. "
+            f"Try --placer elk instead. stderr: {' | '.join(stderr_tail)}"
+        )
+    try:
+        result: dict[str, dict[str, float]] = json.loads(proc.stdout)
+    except json.JSONDecodeError as e:
+        raise PlacerEngineError(f"hola subprocess produced invalid JSON: {e}") from e
+    return result
 
 
 class HolaPlacer(Placer):
@@ -89,7 +113,7 @@ class HolaPlacer(Placer):
         hints: dict[str, Any] | None = None,
     ) -> Schematic:
         try:
-            from hola_graph import HolaGraph
+            import hola_graph  # noqa: F401
         except ImportError as e:
             raise PlacerEngineError(
                 "hola placer requires hola-graph; install with "
@@ -101,7 +125,8 @@ class HolaPlacer(Placer):
 
         power_or_ground: set[str] = {n.name for n in out.nets if n.is_power or n.is_ground}
 
-        g = HolaGraph()
+        # Build the request payload for the subprocess.
+        nodes: list[dict[str, Any]] = []
         for c in out.components:
             try:
                 geo = symbol_geometry(c.symbol)
@@ -110,7 +135,7 @@ class HolaPlacer(Placer):
             x_min, y_min, x_max, y_max = geo.bbox
             width = max(x_max - x_min, LTSPICE_GRID)
             height = max(y_max - y_min, LTSPICE_GRID)
-            g.add_node(width=float(width), height=float(height), label=c.ref)
+            nodes.append({"label": c.ref, "width": float(width), "height": float(height)})
 
         # Pairwise edges per non-power/ground net (deduplicated by component pair).
         net_to_refs: dict[str, list[str]] = {}
@@ -120,6 +145,7 @@ class HolaPlacer(Placer):
                     continue
                 net_to_refs.setdefault(net_name, []).append(c.ref)
 
+        edges: list[tuple[str, str]] = []
         seen_pairs: set[tuple[str, str]] = set()
         for refs in net_to_refs.values():
             anchor = refs[0]
@@ -130,34 +156,29 @@ class HolaPlacer(Placer):
                 if pair in seen_pairs:
                     continue
                 seen_pairs.add(pair)
-                g.connect(anchor, target)
+                edges.append((anchor, target))
 
-        # HOLA aborts on disconnected graphs. Stitch together connected
-        # components with virtual edges so the input is always a single
-        # connected graph; the virtual edges don't affect emitted wires.
-        _stitch_disconnected_components(g, [c.ref for c in out.components], seen_pairs)
+        # HOLA aborts on disconnected graphs. Compute virtual edges between
+        # disconnected components and append them.
+        edges.extend(_stitching_edges([c.ref for c in out.components], seen_pairs))
 
-        # HOLA's C++ asserts in faces.cpp::identifyExternalFace on certain
-        # graph structures we cannot fully predict from Python. We screen for
-        # non-planar graphs (definite abort cause); other crashes require
-        # subprocess isolation, deferred to v0.2.
-        graph_refs = [c.ref for c in out.components]
-        if not _is_planar(graph_refs, seen_pairs):
-            raise PlacerEngineError(
-                "hola placer cannot handle non-planar graphs; "
-                "try --placer elk instead. (HOLA limitation.)"
-            )
+        # Run the layout in a subprocess so HOLA's C++ asserts in faces.cpp
+        # (and similar) don't kill the parent. The subprocess returns either
+        # a layout result on stdout or a non-zero exit (signal-coded for
+        # SIGABRT on assertion failure).
+        layout = _run_hola_subprocess(nodes, edges)
 
-        g.layout()
-
-        # HOLA's node.x / node.y is the geometric CENTER; node.bounds is
-        # (left, top, right, bottom) in canvas coords. Component origin
-        # (LTspice SYMBOL position) = bbox-canvas-top-left minus bbox-symbol x_min.
         for c in out.components:
-            node = g.node(c.ref)
+            node_layout = layout.get(c.ref)
+            if node_layout is None:
+                raise PlacerEngineError(f"hola subprocess did not place {c.ref!r}")
             geo = symbol_geometry(c.symbol)
-            left, top, _right, _bottom = node.bounds
-            sx, sy = snap_to_grid((round(left) - geo.bbox[0], round(top) - geo.bbox[1]))
+            sx, sy = snap_to_grid(
+                (
+                    round(node_layout["left"]) - geo.bbox[0],
+                    round(node_layout["top"]) - geo.bbox[1],
+                )
+            )
             c.x, c.y = sx, sy
             c.orientation = "R0"
 
