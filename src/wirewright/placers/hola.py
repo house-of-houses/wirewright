@@ -175,11 +175,11 @@ class HolaPlacer(Placer):
                         )
             if len({p for p in pin_positions}) < 2:
                 continue
-            anchor = pin_positions[0]
-            for target in pin_positions[1:]:
-                if target == anchor:
+            wire_anchor = pin_positions[0]
+            for wire_target in pin_positions[1:]:
+                if wire_target == wire_anchor:
                     continue
-                out.wires.extend(l_shape(anchor, target))
+                out.wires.extend(l_shape(wire_anchor, wire_target))
 
         # Power/ground rails as flags + stub wires.
         out.flags = []
