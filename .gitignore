@@ -49,6 +49,8 @@ htmlcov/
 # Node (for elk-bridge)
 node_modules/
 package-lock.json
+tools/elk-bridge/node_modules/
+tools/elk-bridge/package-lock.json
 
 # LTspice working files
 *.raw
