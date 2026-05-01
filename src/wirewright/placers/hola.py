@@ -68,7 +68,7 @@ def _stitch_disconnected_components(
 
 def _is_planar(all_refs: list[str], pairs: set[tuple[str, str]]) -> bool:
     """Quick planarity check via NetworkX. HOLA requires planar input."""
-    import networkx as nx
+    import networkx as nx  # type: ignore[import-untyped]
 
     graph = nx.Graph()
     graph.add_nodes_from(all_refs)
