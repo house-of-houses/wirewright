@@ -86,6 +86,8 @@ The North Star: a deterministic, configurable placer that converts SPICE netlist
 
 **Depends on**: Phase 3. May be skipped or delayed if pyhola build is intractable; not a blocker for shipping a v0.1 with ELK only.
 
+**Status**: complete in v0.1 with caveats. `hola-graph` PyPI wheel covers macOS arm64 / Linux x86_64 (no manual `adaptagrams` build needed; obsoletes the `docs/build-hola.md` DoD bullet). HOLA renders divider and tb303-envelope; aborts with C++ `faces.cpp` assertion on tb303-vco-integrated (planarity check passes but biconnectivity-related internal assertion still fires). Subprocess isolation deferred to v0.2. Side-by-side comparison tool ships at `tools/render_compare.py`; opinion documented at `docs/notes/elk-vs-hola.md`.
+
 ---
 
 ## Phase 5: pattern recognition

@@ -177,6 +177,22 @@ wheels = [
 ]
 
 [[package]]
+name = "hola-graph"
+version = "0.1.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/d6/652ac0634eb111df59eee2162a87501542365ce2bcca3d715250aed11b2d/hola_graph-0.1.5.tar.gz", hash = "sha256:235981328a1e0fcfcabdad09fca5428af9b270743f961fd28669c6cf8832840a", size = 208543, upload-time = "2025-12-22T03:19:45.413Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b3/d0/300bae2d767b7153996af93c581c9fc1437016f72e10bcfb4f80fe34d145/hola_graph-0.1.5-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:e9b3ca21999079a6cdc9900a0c0ae8828be56aa03daa5fbba5d333bd552f242b", size = 1686268, upload-time = "2025-12-22T03:19:29.126Z" },
+    { url = "https://files.pythonhosted.org/packages/21/0b/fea9b73a9517c4b7eb50484aaa5d22e00b16568d2567780cd283e5ddc522/hola_graph-0.1.5-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e4d82ea0f9b18bac6b0b219f63e74a3fee4e8cf47aeb6df45d54c8dc1a4fb176", size = 2413572, upload-time = "2025-12-22T03:19:31.432Z" },
+    { url = "https://files.pythonhosted.org/packages/af/42/b262ec3131061ae2830ca7a366931cb5d66bff24c4b87bc2a955cacdafc0/hola_graph-0.1.5-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:228ea5c2bb64d57629d46364b90294f95a26c2d7647f8d572fe7a09c733f78ec", size = 1692976, upload-time = "2025-12-22T03:19:33.104Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/8d/dfb0c6d95836ea5bda3dc4d38f471dd8f06ae4c6ba1c9eff482c70e38d14/hola_graph-0.1.5-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:89a688465301771a4a863c20b5831f1c6b607173d216183c4ab65de3b1bdddd7", size = 2416620, upload-time = "2025-12-22T03:19:34.556Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/35/41434f1f0460dec5e350ada6bd2838bdbfc80caa2f4fc74d31d558a97aa4/hola_graph-0.1.5-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:525fdd7f03aa1c008f55688f2a1408e4a8c2b50e81f024c7a3522a3122e043ca", size = 1693158, upload-time = "2025-12-22T03:19:36.047Z" },
+    { url = "https://files.pythonhosted.org/packages/64/b7/9cae0bd47a71eb9dfedb4370c65ceab3255372ef8e6b4ba86f383cb06d73/hola_graph-0.1.5-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:0220c4a7da1e54a4d1fbd150c9ce6120ae3dc7cd34b2a49b48bbf6b670d70dbe", size = 2415973, upload-time = "2025-12-22T03:19:37.384Z" },
+    { url = "https://files.pythonhosted.org/packages/96/67/694542a0480efe70fcfd3223cfa9807df7e6b9b053e9a9804b5cbf8e92ef/hola_graph-0.1.5-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:8daceb44722f2169929627178e83018286bd38cbf83f528dbf8b5c65bf695e79", size = 1691192, upload-time = "2025-12-22T03:19:38.81Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/56/7157d48b8b10722f74b141fdfe220e3c67f52d0b9c180bb5eb786ff497ea/hola_graph-0.1.5-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:c786a39ef925ad07f5b328f9237d01073bfbb7bb5e26e7b93e1247f9c4e7c1fd", size = 2416991, upload-time = "2025-12-22T03:19:40.59Z" },
+]
+
+[[package]]
 name = "hypothesis"
 version = "6.152.4"
 source = { registry = "https://pypi.org/simple" }
@@ -556,15 +572,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pyhola"
-version = "0.1.2110"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/cc/64/c56228a5c636d98c92ef2911e86c95777e514e48ac6f18204247e4404b88/PyHOLA-0.1.2110.tar.gz", hash = "sha256:741eb9cbff5fcbb8d5675e76fd9ed546a64611f7ff88d19803512775840fd983", size = 5017, upload-time = "2021-10-21T19:35:17.492Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1e/01/d7f4dbe38cc2557d795e5d9c75fa3276ee3ad58bf64350e5c8519e7fad31/PyHOLA-0.1.2110-py3-none-any.whl", hash = "sha256:bef3d1ca238d4caef0da76500b54f3c86cb43d43187310d00d0873d673d5d37d", size = 5436, upload-time = "2021-10-21T19:35:14.787Z" },
-]
-
-[[package]]
 name = "pytest"
 version = "9.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -828,6 +835,7 @@ name = "wirewright"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
+    { name = "hola-graph" },
     { name = "networkx" },
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -845,17 +853,18 @@ dev = [
     { name = "ruff" },
 ]
 hola = [
-    { name = "pyhola" },
+    { name = "hola-graph" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "hola-graph", specifier = ">=0.1.5" },
+    { name = "hola-graph", marker = "extra == 'hola'", specifier = ">=0.1.5" },
     { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.100" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "networkx", specifier = ">=3.3,<4.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.7" },
     { name = "pydantic", specifier = ">=2.7,<3.0" },
-    { name = "pyhola", marker = "extra == 'hola'" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "pyyaml", specifier = ">=6.0,<7.0" },

@@ -67,7 +67,11 @@ Failure modes specific to ELK:
 - ELK rejects the graph (e.g., port-constraint violation) → `PlacerEngineError` wrapping the bridge's stderr.
 
 ### hola
-- Phase 4 deliverable; currently raises `NotImplementedError`.
+- Does not recognize `direction`, `aspect_ratio`, or `pinned` in v0.1 (HOLA is unconstrained stress-majorization). Hints are silently ignored.
+- Requires the optional `hola` extra: `uv sync --extra hola`.
+- Disconnected non-power/ground graphs are stitched with virtual edges before layout (HOLA aborts on disconnected input).
+- Non-planar graphs raise `PlacerEngineError` with a suggestion to use `--placer elk`.
+- Some planar graphs still trigger HOLA's internal `faces.cpp:identifyExternalFace` C++ assertion, which Python cannot catch. Subprocess isolation is deferred to v0.2; meanwhile, fixtures that crash HOLA need ELK or naive.
 
 ## Failure modes
 
