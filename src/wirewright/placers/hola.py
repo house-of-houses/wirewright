@@ -30,7 +30,7 @@ from typing import Any
 from wirewright.ir.model import Flag, Schematic, Wire
 from wirewright.ir.validate import LTSPICE_GRID, validate, validate_placed
 from wirewright.placers.base import Placer, PlacerEngineError, PlacerError
-from wirewright.routing.orthogonal import l_shape, snap_to_grid
+from wirewright.routing.orthogonal import l_shape_avoiding, snap_to_grid
 from wirewright.symbols.builtin import absolute_pin_position, symbol_geometry
 
 
@@ -182,8 +182,18 @@ class HolaPlacer(Placer):
             c.x, c.y = sx, sy
             c.orientation = "R0"
 
-        # Synthesize wires by routing pairwise between pin absolute positions.
-        # Skip self-loops (multiple pins of same net on same component).
+        # Build obstacle bboxes for the obstacle-aware router (placed
+        # components in canvas coords). v0.1 assumes R0 orientation.
+        obstacles: list[tuple[int, int, int, int]] = []
+        for c in out.components:
+            assert c.x is not None and c.y is not None
+            geo = symbol_geometry(c.symbol)
+            obstacles.append(
+                (c.x + geo.bbox[0], c.y + geo.bbox[1], c.x + geo.bbox[2], c.y + geo.bbox[3])
+            )
+
+        # Synthesize wires: pick the L-bend orientation that crosses the
+        # fewest other component bodies. Skip self-loops.
         out.wires = []
         for net_name in net_to_refs:
             pin_positions: list[tuple[int, int]] = []
@@ -200,7 +210,7 @@ class HolaPlacer(Placer):
             for wire_target in pin_positions[1:]:
                 if wire_target == wire_anchor:
                     continue
-                out.wires.extend(l_shape(wire_anchor, wire_target))
+                out.wires.extend(l_shape_avoiding(wire_anchor, wire_target, obstacles))
 
         # Power/ground rails as flags + stub wires.
         out.flags = []

@@ -68,7 +68,7 @@ The North Star: a deterministic, configurable placer that converts SPICE netlist
 
 **Depends on**: Phase 2.
 
-**Status**: HOLA placer + subprocess isolation already shipped as the v0.1 spike. Outstanding: libavoid wrapper, expanded fixtures, failure log.
+**Status**: complete in v0.1. HOLA placer + subprocess isolation already shipped from the spike (per ADR-0005). Routing improved with obstacle-aware L-shape selection in `routing/orthogonal.py` (libavoid wrapper deferred — recon showed no usable Python binding to libavoid's `Router`/`ConnRef`; the `hola_graph` package exposes only avoid's geometry primitives. Pure-Python obstacle avoidance suffices for v0.1; libavoid wrapping moves to a future phase). `docs/build-hola.md` documents the wheel + source-build paths. Fixture scaffolding ships in `tools/add_fixture.py` + `tests/fixtures/_TEMPLATE.description.md`. Review tool ships in `tools/review.py` — produces a markdown verdict table the user fills in. The user-recorded failure log becomes Phase 4's input.
 
 ---
 
