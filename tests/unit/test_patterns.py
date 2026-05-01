@@ -152,9 +152,9 @@ def test_priority_resolves_overlap() -> None:
 
 
 def test_matches_to_pinned_hints_applies_dx_dy() -> None:
+    from wirewright.patterns.matcher import PatternMatch
     from wirewright.patterns.orchestrate import matches_to_pinned_hints
     from wirewright.patterns.template import PlacementHint
-    from wirewright.patterns.matcher import PatternMatch
 
     matches = [
         PatternMatch(
