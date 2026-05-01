@@ -42,7 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     if args.description:
         placeholder = (
-            "(2–3 sentences. Why this fixture is in the corpus and what placer behavior\n"
+            "(2-3 sentences. Why this fixture is in the corpus and what placer behavior\n"
             "it exercises.)"
         )
         description = description.replace(placeholder, args.description)

@@ -6,7 +6,7 @@
 
 ## What this circuit does
 
-(2–3 sentences. Why this fixture is in the corpus and what placer behavior
+(2-3 sentences. Why this fixture is in the corpus and what placer behavior
 it exercises.)
 
 ## Phase 3 verdict

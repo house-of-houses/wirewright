@@ -1,11 +1,11 @@
-"""Render every fixture × every placer and emit a markdown verdict table.
+"""Render every fixture x every placer and emit a markdown verdict table.
 
 Usage::
 
     uv run python tools/review.py --out review.md
     uv run python tools/review.py --tier medium --out medium-review.md
 
-The output table has rows = fixtures × placers, columns = fixture name,
+The output table has rows = fixtures x placers, columns = fixture name,
 placer, status (rendered / aborted / parse-error), file size, components
 count, wire count, blank "verdict" and "category" columns for the user
 to fill in after opening the .asc files in LTspice.
