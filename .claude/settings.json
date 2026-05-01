@@ -1,0 +1,23 @@
+{
+  "$schema": "https://docs.claude.com/schemas/claude-code-settings.json",
+  "model": "claude-opus-4-7",
+  "permissions": {
+    "allow": [
+      "bash(uv:*)",
+      "bash(pytest:*)",
+      "bash(ruff:*)",
+      "bash(mypy:*)",
+      "bash(git status)",
+      "bash(git diff:*)",
+      "bash(git log:*)",
+      "bash(git add:*)",
+      "bash(git commit:*)",
+      "bash(node:*)",
+      "bash(npm:*)"
+    ],
+    "deny": [
+      "bash(git push:*)",
+      "bash(rm -rf:*)"
+    ]
+  }
+}

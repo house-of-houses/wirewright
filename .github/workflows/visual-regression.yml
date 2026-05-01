@@ -1,0 +1,13 @@
+name: visual-regression
+
+# Disabled until Phase 3 ships and we have golden .asc files to diff against.
+on:
+  workflow_dispatch:
+
+jobs:
+  render-fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Notice
+        run: echo "Visual regression workflow: enabled in Phase 3 (see docs/PLAN.md)."
