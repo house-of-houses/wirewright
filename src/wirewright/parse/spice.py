@@ -473,7 +473,7 @@ def _handle_subckt_instance(
             f"ports {sub.ports!r}, got {len(call_site_nets)}: {call_site_nets!r}"
         )
 
-    port_map = dict(zip(sub.ports, call_site_nets))
+    port_map = dict(zip(sub.ports, call_site_nets, strict=True))
     namespace = ref[1:] + "." if ref[:1].upper() == "X" else ref + "."
     new_stack = (*_expansion_stack, subckt_name)
 

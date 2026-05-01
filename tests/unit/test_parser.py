@@ -84,12 +84,12 @@ class TestContinuation:
 class TestSubcktStructuralErrors:
     def test_nested_subckt_rejected(self) -> None:
         text = ".subckt A IN OUT\n.subckt B IN OUT\n.ends B\n.ends A\n"
-        with pytest.raises(ParseError, match="nested .SUBCKT"):
+        with pytest.raises(ParseError, match=r"nested \.SUBCKT"):
             parse_spice_text(text)
 
     def test_unclosed_subckt_rejected(self) -> None:
         text = ".subckt A IN OUT\nR1 IN OUT 1k\n"
-        with pytest.raises(ParseError, match="not closed by .ENDS"):
+        with pytest.raises(ParseError, match=r"not closed by \.ENDS"):
             parse_spice_text(text)
 
     def test_orphan_ends_rejected(self) -> None:
@@ -98,7 +98,7 @@ class TestSubcktStructuralErrors:
 
     def test_local_model_rejected(self) -> None:
         text = ".subckt A IN OUT\n.model FOO NPN()\n.ends A\n"
-        with pytest.raises(ParseError, match="local .MODEL"):
+        with pytest.raises(ParseError, match=r"local \.MODEL"):
             parse_spice_text(text)
 
 
