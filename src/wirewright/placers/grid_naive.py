@@ -17,6 +17,7 @@ from typing import Any
 from wirewright.ir.model import Component, Flag, Schematic, Wire
 from wirewright.ir.validate import LTSPICE_GRID, validate, validate_placed
 from wirewright.placers.base import Placer
+from wirewright.routing.orthogonal import l_shape
 from wirewright.symbols import absolute_pin_position, symbol_geometry
 
 # Grid spacing for the naive placer. 16 = LTspice grid; 8 grid cells = 128 IR units.
@@ -97,7 +98,7 @@ class NaivePlacer(Placer):
             ]
             anchor = positions[0]
             for px, py in positions[1:]:
-                out.wires.extend(_l_shape(anchor, (px, py)))
+                out.wires.extend(l_shape(anchor, (px, py)))
 
             # Label nets with two or more endpoints with an IO flag at the anchor
             # so the user can see which net is which.
@@ -106,30 +107,6 @@ class NaivePlacer(Placer):
 
         validate_placed(out)
         return out
-
-
-def _l_shape(a: tuple[int, int], b: tuple[int, int]) -> list[Wire]:
-    """Two axis-aligned wire segments connecting a to b through an L bend.
-
-    Snaps both endpoints to the LTspice grid (they should already be aligned
-    if the symbol pin offsets are correct, but this guards against drift).
-    """
-    ax, ay = _snap(a)
-    bx, by = _snap(b)
-    if ax == bx or ay == by:
-        return [Wire(ax, ay, bx, by)]
-    # L-shape: horizontal first, then vertical.
-    return [
-        Wire(ax, ay, bx, ay),
-        Wire(bx, ay, bx, by),
-    ]
-
-
-def _snap(p: tuple[int, int]) -> tuple[int, int]:
-    return (
-        round(p[0] / LTSPICE_GRID) * LTSPICE_GRID,
-        round(p[1] / LTSPICE_GRID) * LTSPICE_GRID,
-    )
 
 
 # Suppress unused-import warning; keeping the import documents the dependency.
