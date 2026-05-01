@@ -2,8 +2,8 @@
 
 9–20 components. Light transistor count, at most one subcircuit, recognizable
 TB-303 functional blocks. This tier is where the placer choice starts to
-matter — ELK Layered should produce something legible, HOLA should produce
-something noticeably more compact and symmetric.
+matter. HOLA should produce something compact and symmetric; the naive
+fallback should at least produce a valid `.asc`.
 
 ## Contents
 

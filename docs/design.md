@@ -37,8 +37,7 @@
 | `ir/model.py` | data shape | parsing, placement, output |
 | `ir/validate.py` | invariants on IR | how IR is produced |
 | `placers/base.py` | the contract | any specific placer |
-| `placers/elk.py` | ELK ↔ IR translation, Node bridge | other placers, file output |
-| `placers/hola.py` | HOLA ↔ IR translation, pyhola | other placers, file output |
+| `placers/hola.py` | HOLA ↔ IR translation, hola-graph subprocess | other placers, file output |
 | `patterns/matcher.py` | subgraph isomorphism | specific symbols |
 | `patterns/library/*.yaml` | one analog idiom each | the matcher mechanics |
 | `routing/orthogonal.py` | wire routing on grid | placement |
@@ -48,7 +47,7 @@
 
 ## Why these dependencies and not others
 
-Python is the host language because the pattern library, fixture management, and symbol metadata all live more naturally in Python than in JavaScript or Java. ELK is reached through a tiny Node.js subprocess rather than via a Python ELK port because elkjs is the canonical implementation and there are no good Python bindings as of 2026. HOLA is reached through pyhola (pybind11 wrapper around adaptagrams) which is the only Python access point to the algorithm.
+Python is the host language because the pattern library, fixture management, and symbol metadata all live more naturally in Python than in JavaScript or Java. HOLA is reached through `hola-graph` (the renamed `pyhola`, a pybind11 wrapper around adaptagrams) which ships ARM64 macOS / Linux x86_64 PyPI wheels. The actual `layout()` call runs in a subprocess so HOLA's C++ asserts (in `faces.cpp::identifyExternalFace` for certain graph topologies) don't kill the parent Python process.
 
 NetworkX provides subgraph isomorphism (VF2) without C++ build pain. If matching becomes a bottleneck on large circuits, we replace it with a wrapped VF3.
 

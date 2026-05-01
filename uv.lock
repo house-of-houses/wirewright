@@ -872,4 +872,4 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
     { name = "typer", specifier = ">=0.12,<1.0" },
 ]
-provides-extras = ["elk", "hola", "dev"]
+provides-extras = ["hola", "dev"]

@@ -1,6 +1,6 @@
 # ADR 0001: Python as the host language
 
-**Status**: Accepted
+**Status**: Accepted (ELK references in this ADR are historical — see ADR-0005)
 
 **Date**: 2026-05-01
 

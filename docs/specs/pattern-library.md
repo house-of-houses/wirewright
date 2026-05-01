@@ -8,7 +8,7 @@ A pattern is a recognizable analog circuit idiom (differential pair, current mir
 
 ## Why this matters
 
-Generic graph placement algorithms (ELK, HOLA) do not know that a differential pair should be drawn as two transistors mirrored around a vertical axis with their emitters joined at the bottom. They will produce a topologically correct but visually wrong layout. Patterns inject domain knowledge.
+A generic graph placement algorithm (HOLA) does not know that a differential pair should be drawn as two transistors mirrored around a vertical axis with their emitters joined at the bottom. It will produce a topologically correct but visually wrong layout. Patterns inject domain knowledge.
 
 This is the same architectural strategy used by commercial tools (SpiceVision PRO) and by IC physical design tools (ALIGN at UMN/TAMU/Intel).
 
@@ -43,9 +43,11 @@ The matcher returns, for each instance found, the role-to-component-ref mapping 
 ## v0.1 shipping library
 
 The matcher and template format are stable in v0.1. The shipping library is
-a representative subset; the remaining templates are deferred to v0.2 once
-ELK supports honoring `pinned` hints in `interactiveLayout` mode (v0.1
-NaivePlacer is the only placer that honors `pinned`).
+a representative subset; the remaining templates are scoped against the
+Phase 3 failure log (per ADR-0005's reframe: patterns are written to fix
+categorized layout failures, not pre-authored speculatively). v0.1 shipping
+templates honor `pinned` only on `NaivePlacer`; HOLA hint integration is a
+Phase 4 deliverable.
 
 | Pattern | Description | v0.1 |
 |---------|-------------|:----:|

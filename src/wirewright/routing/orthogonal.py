@@ -37,8 +37,8 @@ def l_shape(a: tuple[int, int], b: tuple[int, int]) -> list[Wire]:
 def manhattan_segments(points: list[tuple[int, int]]) -> list[Wire]:
     """Connect a sequence of points pairwise with axis-aligned wires.
 
-    Each consecutive pair is rendered as :func:`l_shape`. Useful for ELK edge
-    sections that consist of a list of bend points.
+    Each consecutive pair is rendered as :func:`l_shape`. Useful for any
+    edge given as a list of bend points.
     """
     wires: list[Wire] = []
     for i in range(len(points) - 1):

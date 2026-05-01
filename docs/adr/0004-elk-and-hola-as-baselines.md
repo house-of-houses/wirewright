@@ -1,6 +1,6 @@
 # ADR 0004: ELK and HOLA as the two real placement baselines
 
-**Status**: Accepted
+**Status**: Superseded by ADR-0005.
 
 **Date**: 2026-05-01
 

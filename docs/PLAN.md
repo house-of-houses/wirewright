@@ -54,56 +54,41 @@ The North Star: a deterministic, configurable placer that converts SPICE netlist
 
 ---
 
-## Phase 3: ELK baseline
+## Phase 3: HOLA + libavoid + expanded fixtures
 
-**Scope**: integrate Eclipse Layout Kernel via Node.js bridge as the first real placer.
+**Scope**: the pipeline becomes real. HOLA is wired up as the only placer (per ADR-0005), `routing/orthogonal.py` becomes a libavoid wrapper for proper object-avoiding orthogonal connector routing, and the fixture set expands to 8–12 circuits each with a recorded "verdict + failure category" by the user.
 
 **Done when**:
-- `tools/elk-bridge/` has a working Node.js script that does ELK layout via stdin/stdout JSON.
-- `src/wirewright/placers/elk.py` implements the `Placer` interface.
-- `wirewright render <netlist> -o <out.asc> --placer elk` works on all three fixtures.
-- The easy fixture renders to a layout that opens cleanly in LTspice and is at least as readable as the existing community state of the art for digital layered layout.
-- The medium and hard fixtures render to valid `.asc` even if the layout is not yet good for analog.
-- Power and ground nets are handled as global rails (top and bottom of canvas), not as ELK edges.
-- `docs/specs/placer-interface.md` is finalized based on real implementation experience.
+- `pyhola` build documented in `docs/build-hola.md` (the `hola-graph` PyPI wheel covers macOS arm64 / Linux x86_64; the doc records the source-build path for unsupported platforms).
+- `src/wirewright/placers/hola.py` implements the `Placer` interface (already done as part of the spike that produced ADR-0005).
+- `routing/orthogonal.py` wraps libavoid (Adaptagrams' object-avoiding orthogonal connector router). Replaces the v0.1 inline pairwise-L-shape routing for HOLA output.
+- `wirewright render <netlist> --placer hola` works on every shipping fixture except the 3 known-abort fixtures (`tb303-vco-saw-cliptop`, `-bottom`, `tb303-vco-integrated`). Those use `--placer naive` as fallback.
+- 8–12 expanded fixtures land in `tests/fixtures/` with `description.md` per fixture (user authors netlists; scaffolding written by the agent). Each rendered output reviewed by the user, with verdict (acceptable / needs-pattern / needs-routing / abort) and failure-category tag recorded.
+- The user-recorded failure log becomes the input to Phase 4.
 
 **Depends on**: Phase 2.
 
-**Status**: complete in v0.1. ELK Layered baseline ships; canonical fixtures render via `--placer elk`. Strict connectivity isomorphism is preserved on the easy fixture; medium/hard fixtures render to valid `.asc` but layout-induced wire overlaps may merge nets at the parser level (acknowledged v0.1 quality limitation).
+**Status**: HOLA placer + subprocess isolation already shipped as the v0.1 spike. Outstanding: libavoid wrapper, expanded fixtures, failure log.
 
 ---
 
-## Phase 4: HOLA baseline
+## Phase 4 (was 5): patterns driven by Phase 3's failure log
 
-**Scope**: integrate HOLA (Human-like Orthogonal Layout) via pyhola as the second real placer.
+**Scope**: pattern recognition specifically targeting the failure categories surfaced in Phase 3. Patterns aren't written speculatively; each one fixes a categorized failure from the Phase 3 review.
 
 **Done when**:
-- pyhola builds against adaptagrams in a documented procedure (`docs/build-hola.md`).
-- `src/wirewright/placers/hola.py` implements the `Placer` interface.
-- `wirewright render <netlist> --placer hola` works on all three fixtures.
-- `tools/render_compare.py` produces a side-by-side report of ELK vs HOLA for any fixture.
-- You have a documented honest opinion in `docs/notes/elk-vs-hola.md` about which placer is closer to your hand-drawn target on which kinds of circuits.
+- For each "needs-pattern" verdict from Phase 3, a pattern template lands in `src/wirewright/patterns/library/` with a triggering fixture and a matcher test.
+- Re-rendering each affected fixture with `--use-patterns` produces output the user marks acceptable.
+- `docs/notes/pattern-coverage.md` updated to map each shipping pattern to the Phase 3 failure it fixes.
+- HOLA honors `pinned` hints (so `--use-patterns --placer hola` actually changes layout). v0.1 only NaivePlacer honors them; v0.2 lifts that to HOLA via `hola_graph.HolaGraph.add_node(x=, y=)` initial positions or post-layout translation.
 
-**Depends on**: Phase 3. May be skipped or delayed if pyhola build is intractable; not a blocker for shipping a v0.1 with ELK only.
+**Depends on**: Phase 3. This is the last phase before v0.1 ships.
 
-**Status**: complete in v0.1 with caveats. `hola-graph` PyPI wheel covers macOS arm64 / Linux x86_64 (no manual `adaptagrams` build needed; obsoletes the `docs/build-hola.md` DoD bullet). HOLA renders divider and tb303-envelope; aborts with C++ `faces.cpp` assertion on tb303-vco-integrated (planarity check passes but biconnectivity-related internal assertion still fires). Subprocess isolation deferred to v0.2. Side-by-side comparison tool ships at `tools/render_compare.py`; opinion documented at `docs/notes/elk-vs-hola.md`.
+**Status**: 7 starter templates ship from the v0.1 spike (`rc_lowpass`, `rc_highpass`, `diff_pair_{npn,pnp}`, `current_mirror_{npn,pnp}`, `common_emitter_npn`). Whether they survive to v0.1-final depends on Phase 3's failure log — patterns that don't fix anything in the expanded fixture set get archived rather than maintained.
 
 ---
 
-## Phase 5: pattern recognition
-
-**Scope**: a matcher that finds analog idioms in the netlist and applies template placements before the underlying placer runs.
-
-**Done when**:
-- `docs/specs/pattern-library.md` defines the YAML template format.
-- `src/wirewright/patterns/matcher.py` uses NetworkX VF2 (or VF3 if we wrap it) to find matches.
-- The library has at least these templates: differential pair (NPN, PNP, NMOS, PMOS), current mirror (NPN, PNP, NMOS, PMOS), common-emitter stage, RC low-pass, RC high-pass, opamp inverting, opamp non-inverting, opamp Sallen-Key low-pass, BJT diff amp with current mirror load, TB-303 ladder rung.
-- Each template has a fixture that triggers it and a test that asserts the match.
-- The medium and hard fixtures are now visibly better than they were at the end of Phase 4.
-
-**Depends on**: Phase 4. Optional for v0.1 if Phase 4 output is already acceptable.
-
-**Status**: complete in v0.1 with reduced template count. 7 templates ship in `src/wirewright/patterns/library/` (`rc_lowpass`, `rc_highpass`, `diff_pair_npn`, `diff_pair_pnp`, `current_mirror_npn`, `current_mirror_pnp`, `common_emitter_npn`); the remaining list-of-13 from the original DoD is deferred to v0.2 (see `docs/notes/pattern-coverage.md`). Each shipping template has a unit test asserting it matches a synthetic fixture. Hint integration: only `NaivePlacer` honors `pinned` in v0.1 — ELK's `interactiveLayout` mode proved finicky in elkjs and is deferred. The `--use-patterns` CLI flag on `render` enables pattern detection + pinning.
+(no Phase 5 — Phase 4 is the last phase before v0.1 ships.)
 
 ---
 
@@ -118,6 +103,6 @@ The North Star: a deterministic, configurable placer that converts SPICE netlist
 
 ## Re-evaluation milestones
 
-- After Phase 3: decide if v0.1 ships with ELK only or if HOLA is required.
-- After Phase 4: decide if v0.2 needs Phase 5 (patterns) or if the bare HOLA output is good enough on real Eurorack circuits.
-- After Phase 5: decide if there is appetite for an LLM-based v0.3 path.
+- End of Phase 3: review the failure-category log for the expanded fixtures. Decide which categories are pattern-shaped (Phase 4) vs routing-shaped (libavoid follow-up) vs HOLA-internal (v0.2 backlog).
+- End of Phase 4: ship v0.1 if the medium/hard fixtures are acceptable. Otherwise iterate on patterns.
+- Post-v0.1: revisit ADR-0004's "two placers" question only if a real second use case appears (ADR-0005 for the current decision).

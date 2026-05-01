@@ -21,8 +21,9 @@
   `pinned` hints to the placer.
 - **Only `NaivePlacer` honors `pinned` in v0.1** (matched components go to
   their canonical positions; remaining components fill grid around them).
-- ELK and HOLA do not honor `pinned` in v0.1; using `--use-patterns
-  --placer elk` is a no-op for placement.
+- HOLA does not honor `pinned` in v0.1; using `--use-patterns --placer hola`
+  detects patterns but doesn't change layout. HOLA hint integration is a
+  Phase 4 deliverable per ADR-0005's reframe.
 
 ## v0.2 backlog (per `docs/specs/pattern-library.md`)
 
@@ -40,7 +41,7 @@
 
 ## v0.2 follow-ups beyond template authoring
 
-- ELK pinned-hint support via `org.eclipse.elk.layered.crossingMinimization.semiInteractive` or two-pass layout.
+- HOLA pinned-hint support via `hola_graph.HolaGraph.add_node(x=, y=)` initial positions or post-layout translation.
 - HOLA pinned-hint support (currently HOLA has no pinning API exposed in `hola_graph`).
 - Pattern conflict resolution beyond simple priority + overlap rejection.
 - Multi-instance template variations (e.g. a single template that matches both NPN and PNP via parameterization).

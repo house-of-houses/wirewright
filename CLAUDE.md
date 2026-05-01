@@ -6,7 +6,7 @@ A SPICE netlist to LTspice `.asc` placer. Reads a netlist, decides where every c
 
 ## Architecture in one breath
 
-`netlist file → parse/spice.py → IR (ir/model.py) → placers/{naive,elk,hola}.py → IR with coords → emit/asc.py → .asc file`. The IR is the stable contract between every layer.
+`netlist file → parse/spice.py → IR (ir/model.py) → placers/{naive,hola}.py → IR with coords → emit/asc.py → .asc file`. The IR is the stable contract between every layer.
 
 ## Hard rules
 
@@ -23,7 +23,7 @@ A SPICE netlist to LTspice `.asc` placer. Reads a netlist, decides where every c
 uv sync                                     # install
 uv run wirewright --help                    # CLI help
 uv run wirewright demo                      # trivial 2-resistor demo, end-to-end
-uv run wirewright render <netlist> -o <out.asc> [--placer naive|elk|hola]
+uv run wirewright render <netlist> -o <out.asc> [--placer naive|hola]
 uv run pytest                               # run tests
 uv run pytest tests/integration -k easy     # one fixture
 uv run ruff check                           # lint
@@ -35,7 +35,7 @@ uv run python tools/render_compare.py fixtures/medium    # A/B both placers (Pha
 
 See `docs/PLAN.md` for the full plan. Update the line below when a phase is complete.
 
-**Current phase**: 5 complete (with reduced template count + naive-only pinning); v0.1 ready for tag.
+**Current phase**: post-spike. ADR-0005 removed ELK; Phase 3 (HOLA + libavoid + expanded fixtures) starting.
 
 ## Workflow expectations
 

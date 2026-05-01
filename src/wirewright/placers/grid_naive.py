@@ -1,10 +1,10 @@
 """Naive grid placer: arrange components in a regular grid in input order.
 
 This is intentionally trivial. Its job is to prove the IR → placer → emitter
-pipeline works end-to-end. It is the structural template for the real placers
-(ELK, HOLA) that come in Phases 3 and 4.
+pipeline works end-to-end and to serve as a fallback when HOLA can't lay
+out a particular graph (the 3 known abort fixtures).
 
-Quality of layout: bad. Use ``elk`` or ``hola`` for real circuits.
+Quality of layout: bad. Use ``hola`` for real circuits.
 """
 
 from __future__ import annotations

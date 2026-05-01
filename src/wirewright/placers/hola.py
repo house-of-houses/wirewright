@@ -93,7 +93,7 @@ def _run_hola_subprocess(
         stderr_tail = proc.stderr.strip().splitlines()[-3:]
         raise PlacerEngineError(
             f"hola subprocess failed ({signal_hint}); HOLA cannot lay out this graph. "
-            f"Try --placer elk instead. stderr: {' | '.join(stderr_tail)}"
+            f"Try --placer naive as a fallback. stderr: {' | '.join(stderr_tail)}"
         )
     try:
         result: dict[str, dict[str, float]] = json.loads(proc.stdout)

@@ -2,7 +2,7 @@
 
 > Auto-generate readable LTspice `.asc` schematics from SPICE netlists.
 
-A placer that takes a SPICE netlist and writes an LTspice `.asc` file you can actually read. Built on top of established graph-layout algorithms (ELK, HOLA) with an analog-idiom pattern layer for circuits like differential pairs, current mirrors, opamp feedback networks, and TB-303-style ladder rungs.
+A placer that takes a SPICE netlist and writes an LTspice `.asc` file you can actually read. Built on HOLA (Human-like Orthogonal Layout, Kieffer et al, IEEE TVCG 2016) with an analog-idiom pattern layer for circuits like differential pairs, current mirrors, opamp feedback networks, and TB-303-style ladder rungs.
 
 **Status**: pre-alpha. The pipeline runs end-to-end with a trivial demo. Real circuits are coming in Phases 1-4 (see [`docs/PLAN.md`](docs/PLAN.md)).
 
@@ -24,8 +24,8 @@ pip install -e .
 # run the trivial demo (two resistors in series)
 wirewright demo
 
-# render a real netlist (Phase 3+, requires ELK or HOLA)
-wirewright render path/to/circuit.net -o out.asc
+# render a real netlist via HOLA (requires `uv sync --extra hola`)
+wirewright render path/to/circuit.net -o out.asc --placer hola
 ```
 
 ## How it works
@@ -41,13 +41,14 @@ wirewright render path/to/circuit.net -o out.asc
 └──────────────┘   └─────────┘   └──────────────────────────┘
 ```
 
-The Internal Representation (IR) is the stable contract that decouples parsing, placement, and emission. Multiple placers plug into the same interface:
+The Internal Representation (IR) is the stable contract that decouples parsing, placement, and emission. Two placers plug into the same `Placer` interface:
 
-- `naive`: trivial grid placement, ships with v0.0.1 for sanity checks.
-- `elk`: Eclipse Layout Kernel via a tiny Node.js bridge. Layered Sugiyama with port constraints and orthogonal routing. Best for circuits with strong directional flow.
-- `hola`: Human-like Orthogonal Layout (Kieffer et al, IEEE TVCG 2016) via pyhola. Stress-majorization with port constraints, produces more compact and symmetric layouts. Best for analog with feedback and balanced sections.
+- `naive`: trivial grid placement; fallback for circuits HOLA cannot lay out.
+- `hola`: Human-like Orthogonal Layout (Kieffer et al, IEEE TVCG 2016) via the `hola-graph` package. Stress-majorization that produces compact and symmetric layouts. The default for real circuits.
 
-A pattern-recognition layer (Phase 5) finds analog idioms like differential pairs, current mirrors, and ladder rungs in the netlist and applies template placements before the underlying placer runs.
+ELK Layered was evaluated as a second placer in v0.1 and removed per [ADR-0005](docs/adr/0005-hola-as-only-placer.md): empirical comparison on 21 TB-303 fixtures showed HOLA the clear winner.
+
+A pattern-recognition layer finds analog idioms like differential pairs, current mirrors, and ladder rungs in the netlist and applies template placements before HOLA runs (the `--use-patterns` flag).
 
 ## Project layout
 
@@ -56,7 +57,7 @@ src/wirewright/
 ├── ir/         internal representation (the stable contract)
 ├── parse/      SPICE netlist + .asc file parsing
 ├── emit/       IR + placement → .asc file
-├── placers/    pluggable placement backends (naive, elk, hola)
+├── placers/    pluggable placement backends (naive, hola)
 ├── patterns/   analog idiom matcher and template library
 ├── routing/    orthogonal wire routing
 ├── symbols/    LTspice .asy pin geometry

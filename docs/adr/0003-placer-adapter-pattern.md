@@ -1,6 +1,6 @@
 # ADR 0003: Placer adapter pattern
 
-**Status**: Accepted
+**Status**: Accepted (the adapter pattern stays per ADR-0005, even though only HOLA currently registers — cheap to keep, ready for a future second back end)
 
 **Date**: 2026-05-01
 

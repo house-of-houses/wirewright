@@ -21,14 +21,11 @@ def get_placer(name: str) -> Placer:
     return registry[name]()
 
 
-# Lazy-import the heavier back ends so missing optional deps don't break the
-# whole CLI. ELK and HOLA placers raise informative NotImplementedError until
-# their respective phases land.
-from wirewright.placers.elk import ElkPlacer  # noqa: E402
+# Lazy-import HOLA so a missing hola-graph dep doesn't break the CLI for
+# users who only need naive placement.
 from wirewright.placers.hola import HolaPlacer  # noqa: E402
 
 registry: dict[str, type[Placer]] = {
     "naive": NaivePlacer,
-    "elk": ElkPlacer,
     "hola": HolaPlacer,
 }

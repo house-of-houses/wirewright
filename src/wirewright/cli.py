@@ -5,7 +5,7 @@ Usage::
     wirewright --help
     wirewright version
     wirewright demo
-    wirewright render <netlist> -o <out.asc> [--placer naive|elk|hola]
+    wirewright render <netlist> -o <out.asc> [--placer naive|hola]
 """
 
 from __future__ import annotations

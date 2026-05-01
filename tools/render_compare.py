@@ -8,7 +8,7 @@ Usage::
 
     uv run python tools/render_compare.py tests/fixtures/medium/tb303-envelope.net
     uv run python tools/render_compare.py tests/fixtures/easy --out _cmp
-    uv run python tools/render_compare.py fixture.net --placers naive elk
+    uv run python tools/render_compare.py fixture.net --placers naive hola
 """
 
 from __future__ import annotations

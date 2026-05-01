@@ -2,9 +2,9 @@
 
 >20 components OR heavy transistor count OR multiple subcircuits. Dense
 feedback, requires symmetry to be readable. This tier is where pattern
-recognition (Phase 5) becomes essential — bare ELK and bare HOLA both
-produce something legible-but-not-great; a working ladder-rung or
-diff-amp pattern template should make a visible difference.
+recognition (Phase 4) becomes essential — bare HOLA produces something
+legible-but-not-great; a working ladder-rung or diff-amp pattern
+template should make a visible difference.
 
 ## Contents
 

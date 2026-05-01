@@ -15,7 +15,7 @@ from wirewright.ir.model import Schematic
 class Placer(ABC):
     """Abstract base for all placement back ends."""
 
-    name: str        # short identifier used by the CLI: "naive", "elk", "hola"
+    name: str        # short identifier used by the CLI: "naive", "hola"
 
     @abstractmethod
     def place(self, schematic: Schematic, hints: dict | None = None) -> Schematic:
@@ -56,24 +56,11 @@ This applies to all back ends.
 - `pinned`: components in the dict are placed at the given `(x, y, orientation)`; remaining components fill the regular grid layout around them. This is the v0.1 path for pattern-driven placement (the `pattern_recognition` layer outputs `pinned` hints).
 - Other hints are silently ignored.
 
-### elk
-- `direction`: maps to `elk.direction` (LR→RIGHT, RL→LEFT, TB→DOWN, BT→UP). Default RIGHT.
-- `aspect_ratio`: not yet supported. v0.3+.
-- `pinned`: not honored in v0.1. ELK Layered's `interactiveLayout` mode is finicky in elkjs and an in-session smoke test showed it ignores per-node `x`/`y` requests. v0.2 may explore `org.eclipse.elk.layered.crossingMinimization.semiInteractive` properly, or pre-position pinned nodes via a two-pass approach.
-
-ELK uses Eclipse Layout Kernel via a Node.js subprocess (`tools/elk-bridge/`).
-Failure modes specific to ELK:
-- `node` not on PATH → `PlacerEngineError` with install instructions.
-- `tools/elk-bridge/node_modules/` missing → `PlacerEngineError`.
-- ELK subprocess timeout (default 30s) → `PlacerEngineError`.
-- ELK rejects the graph (e.g., port-constraint violation) → `PlacerEngineError` wrapping the bridge's stderr.
-
 ### hola
 - Does not recognize `direction`, `aspect_ratio`, or `pinned` in v0.1 (HOLA is unconstrained stress-majorization). Hints are silently ignored.
 - Requires the optional `hola` extra: `uv sync --extra hola`.
 - Disconnected non-power/ground graphs are stitched with virtual edges before layout (HOLA aborts on disconnected input).
-- Non-planar graphs raise `PlacerEngineError` with a suggestion to use `--placer elk`.
-- Some planar graphs still trigger HOLA's internal `faces.cpp:identifyExternalFace` C++ assertion, which Python cannot catch. Subprocess isolation is deferred to v0.2; meanwhile, fixtures that crash HOLA need ELK or naive.
+- Layout runs in a subprocess (`wirewright.placers._hola_subprocess`) so HOLA's C++ asserts (in `faces.cpp::identifyExternalFace` on certain graph topologies) raise `PlacerEngineError` instead of killing the parent Python process. The user can then fall back to `--placer naive`.
 
 ## Failure modes
 
