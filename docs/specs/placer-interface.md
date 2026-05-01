@@ -53,11 +53,13 @@ This applies to all back ends.
 ## Hints recognized by specific back ends
 
 ### naive
-- Does not recognize any hints. Lays out in input order on a regular grid.
+- `pinned`: components in the dict are placed at the given `(x, y, orientation)`; remaining components fill the regular grid layout around them. This is the v0.1 path for pattern-driven placement (the `pattern_recognition` layer outputs `pinned` hints).
+- Other hints are silently ignored.
 
 ### elk
 - `direction`: maps to `elk.direction` (LR→RIGHT, RL→LEFT, TB→DOWN, BT→UP). Default RIGHT.
-- `aspect_ratio`, `pinned`: not yet supported in v0.1; ignored silently. v0.3+.
+- `aspect_ratio`: not yet supported. v0.3+.
+- `pinned`: not honored in v0.1. ELK Layered's `interactiveLayout` mode is finicky in elkjs and an in-session smoke test showed it ignores per-node `x`/`y` requests. v0.2 may explore `org.eclipse.elk.layered.crossingMinimization.semiInteractive` properly, or pre-position pinned nodes via a two-pass approach.
 
 ELK uses Eclipse Layout Kernel via a Node.js subprocess (`tools/elk-bridge/`).
 Failure modes specific to ELK:

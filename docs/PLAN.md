@@ -103,6 +103,8 @@ The North Star: a deterministic, configurable placer that converts SPICE netlist
 
 **Depends on**: Phase 4. Optional for v0.1 if Phase 4 output is already acceptable.
 
+**Status**: complete in v0.1 with reduced template count. 7 templates ship in `src/wirewright/patterns/library/` (`rc_lowpass`, `rc_highpass`, `diff_pair_npn`, `diff_pair_pnp`, `current_mirror_npn`, `current_mirror_pnp`, `common_emitter_npn`); the remaining list-of-13 from the original DoD is deferred to v0.2 (see `docs/notes/pattern-coverage.md`). Each shipping template has a unit test asserting it matches a synthetic fixture. Hint integration: only `NaivePlacer` honors `pinned` in v0.1 — ELK's `interactiveLayout` mode proved finicky in elkjs and is deferred. The `--use-patterns` CLI flag on `render` enables pattern detection + pinning.
+
 ---
 
 ## Out of scope for v0.x

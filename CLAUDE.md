@@ -35,7 +35,7 @@ uv run python tools/render_compare.py fixtures/medium    # A/B both placers (Pha
 
 See `docs/PLAN.md` for the full plan. Update the line below when a phase is complete.
 
-**Current phase**: 4 complete (with HOLA limitations); Phase 5 (pattern recognition) starting.
+**Current phase**: 5 complete (with reduced template count + naive-only pinning); v0.1 ready for tag.
 
 ## Workflow expectations
 

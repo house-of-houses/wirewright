@@ -1,0 +1,17 @@
+name: common_emitter_npn
+version: 1
+description: NPN common-emitter stage (collector R + emitter R)
+priority: 150
+match:
+  components:
+    - {role: q,  symbol: npn}
+    - {role: rc, symbol: res}
+    - {role: re, symbol: res}
+  topology:
+    - q.C == rc.2
+    - q.E == re.1
+    - re.2 == GND
+placement:
+  q:  {dx: 0,  dy: 96,  orientation: R0}
+  rc: {dx: 16, dy: 0,   orientation: R0}
+  re: {dx: 16, dy: 224, orientation: R0}

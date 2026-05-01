@@ -75,6 +75,13 @@ def render(
         str,
         typer.Option("--placer", help="Which placer to use."),
     ] = "naive",
+    use_patterns: Annotated[
+        bool,
+        typer.Option(
+            "--use-patterns",
+            help="Detect analog idioms (diff pair, current mirror, RC filter, …) and pin them to canonical positions before placement.",
+        ),
+    ] = False,
 ) -> None:
     """Render a SPICE netlist to an LTspice .asc file."""
     if not netlist.exists():
@@ -83,7 +90,21 @@ def render(
 
     schematic = parse_spice_file(netlist)
     placer_obj = get_placer(placer)
-    placed = placer_obj.place(schematic)
+    hints: dict[str, object] | None = None
+    if use_patterns:
+        from wirewright.patterns.orchestrate import build_hints_from_patterns
+
+        full_hints = build_hints_from_patterns(schematic)
+        matches = full_hints.pop("_matches", [])
+        hints = full_hints
+        if matches:
+            summary = ", ".join(
+                f"{m.pattern_name}({list(m.role_to_ref.values())})" for m in matches
+            )
+            console.print(f"[cyan]Patterns matched:[/cyan] {summary}")
+        else:
+            console.print("[yellow]No patterns matched in this netlist.[/yellow]")
+    placed = placer_obj.place(schematic, hints=hints)
     write_asc(placed, output)
     console.print(
         f"[green]Rendered[/green] {netlist} → {output} "

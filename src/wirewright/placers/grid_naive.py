@@ -39,12 +39,24 @@ class NaivePlacer(Placer):
         validate(schematic)
         out = copy.deepcopy(schematic)
 
-        # Lay components out in a square-ish grid.
-        n = len(out.components)
+        pinned: dict[str, tuple[int, int, str]] = (hints or {}).get("pinned") or {}
+
+        # Pinned components first; remaining fill a square-ish grid around them.
+        unpinned = [c for c in out.components if c.ref not in pinned]
+        n = len(unpinned)
         cols = max(1, math.ceil(math.sqrt(n)))
-        for i, comp in enumerate(out.components):
+        # Reserve x=0..pinned_xmax for pinned components; grid starts to the right.
+        pinned_x_max = max((px for px, _, _ in pinned.values()), default=-CELL_W)
+        grid_origin_x = MARGIN + pinned_x_max + CELL_W
+
+        for c in out.components:
+            if c.ref in pinned:
+                px, py, orient = pinned[c.ref]
+                c.x, c.y = px, py
+                c.orientation = orient  # type: ignore[assignment]
+        for i, comp in enumerate(unpinned):
             row, col = divmod(i, cols)
-            comp.x = MARGIN + col * CELL_W
+            comp.x = grid_origin_x + col * CELL_W
             comp.y = MARGIN + row * CELL_H
             comp.orientation = "R0"
 

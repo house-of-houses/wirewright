@@ -1,0 +1,14 @@
+name: rc_lowpass
+version: 1
+description: First-order RC low-pass filter (R in series, C to GND)
+priority: 100
+match:
+  components:
+    - {role: r, symbol: res}
+    - {role: c, symbol: cap}
+  topology:
+    - r.2 == c.1
+    - c.2 == GND
+placement:
+  r: {dx: 0,   dy: 0, orientation: R0}
+  c: {dx: 96,  dy: 0, orientation: R0}

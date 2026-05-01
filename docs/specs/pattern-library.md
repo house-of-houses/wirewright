@@ -1,6 +1,6 @@
 # Spec: Analog idiom pattern library
 
-**Status**: stub. Will be drafted properly in Phase 5.
+**Status**: stable in v0.1.
 
 ## Overview
 
@@ -14,44 +14,63 @@ This is the same architectural strategy used by commercial tools (SpiceVision PR
 
 ## Template format
 
-(Sketch only. Will be finalized in Phase 5.)
-
 ```yaml
-name: diff_pair_npn
-description: NPN differential pair with shared emitter
+name: <pattern_id>             # required, snake_case
+version: <integer>             # required, bumps on layout-affecting change
+description: <free text>
+priority: <integer>            # higher wins on overlap; default 100
+
 match:
-  components:
-    - {role: q1, symbol: npn}
-    - {role: q2, symbol: npn}
-  topology:
-    - q1.E == q2.E       # shared emitter node
-    - q1.B != q2.B       # different bases
-    - q1.C != q2.C       # different collectors
-placement:
-  q1: {dx: 0,  dy: 0,  orientation: R0}
-  q2: {dx: 80, dy: 0,  orientation: M0}   # mirrored about vertical axis
-priority: 100            # higher priority patterns match first
+  components:                  # required, ≥1; ≥2 for templates with topology
+    - role: <role_name>
+      symbol: <symbol_name>    # IR symbol name; matches Component.symbol
+  topology:                    # required, ≥1 entry
+    - <role>.<pin> == <role>.<pin>      # same-net constraint
+    - <role>.<pin> != <role>.<pin>      # different-net constraint
+    - <role>.<pin> == GND               # connected to ground
+
+placement:                     # optional; pattern detected even if omitted
+  <role>:
+    dx: <int>                  # offset from anchor (multiple of LTSPICE_GRID = 16)
+    dy: <int>                  # multiple of LTSPICE_GRID = 16
+    orientation: R0|R90|R180|R270|M0|M90|M180|M270
 ```
 
 The matcher returns, for each instance found, the role-to-component-ref mapping and the placement transform. The placer takes these as `hints["pinned"]` entries.
 
-## Initial library (Phase 5 deliverable)
+**Single-component templates** (only one role) are rejected at template-load time in v0.1: VF2 needs at least two roles to perform a meaningful subgraph isomorphism, and topology constraints involving a single role's own pins (e.g. `q.E == GND`) bypass VF2 entirely. Single-component matching by symbol-only is doable but adds complexity for limited benefit; deferred to v0.2.
+
+## v0.1 shipping library
+
+The matcher and template format are stable in v0.1. The shipping library is
+a representative subset; the remaining templates are deferred to v0.2 once
+ELK supports honoring `pinned` hints in `interactiveLayout` mode (v0.1
+NaivePlacer is the only placer that honors `pinned`).
+
+| Pattern | Description | v0.1 |
+|---------|-------------|:----:|
+| `rc_lowpass` | Single-pole RC LPF | ✓ |
+| `rc_highpass` | Single-pole RC HPF | ✓ |
+| `diff_pair_npn` | NPN differential pair, mirrored vertically | ✓ |
+| `diff_pair_pnp` | PNP variant | ✓ |
+| `current_mirror_npn` | NPN current mirror, base shared, one diode-connected | ✓ |
+| `current_mirror_pnp` | PNP variant | ✓ |
+| `common_emitter_npn` | CE stage with collector + emitter R | ✓ |
+
+## v0.2 backlog
 
 | Pattern | Description |
 |---------|-------------|
-| `diff_pair_{npn,pnp,nmos,pmos}` | Differential pair, mirrored vertically |
-| `current_mirror_{npn,pnp,nmos,pmos}` | Current mirror, gate/base shared |
+| `diff_pair_{nmos,pmos}` | MOSFET differential pair |
+| `current_mirror_{nmos,pmos}` | MOSFET current mirror |
 | `cascode_{npn,nmos}` | Stacked transistor with shared base/gate |
-| `common_emitter_npn` | CE stage with collector load |
-| `common_source_nmos` | Equivalent for FETs |
-| `rc_lowpass` | Single-pole RC LPF |
-| `rc_highpass` | Single-pole RC HPF |
-| `opamp_inverting` | Standard opamp + Rin + Rfb |
-| `opamp_noninverting` | Standard opamp + Rfb + Rg |
+| `common_source_nmos` | NMOS equivalent of CE stage |
+| `opamp_inverting` | opamp + Rin + Rfb (needs opamp subcircuit handling) |
+| `opamp_noninverting` | opamp + Rfb + Rg |
 | `opamp_sallen_key_lpf` | 2-pole Sallen-Key low-pass |
-| `tb303_ladder_rung` | One stage of the TB-303 transistor ladder filter |
+| `bjt_diff_amp_full` | diff pair + tail current source + mirror load |
+| `tb303_ladder_rung` | One stage of TB-303 transistor ladder filter |
 | `expo_converter_2t` | 2-transistor exponential converter |
-| `bjt_diff_amp_full` | Full diff amp: pair + tail current source + mirror load |
 
 ## Conflict resolution
 

@@ -1,0 +1,15 @@
+name: diff_pair_npn
+version: 1
+description: NPN differential pair, shared emitter
+priority: 200
+match:
+  components:
+    - {role: q1, symbol: npn}
+    - {role: q2, symbol: npn}
+  topology:
+    - q1.E == q2.E
+    - q1.B != q2.B
+    - q1.C != q2.C
+placement:
+  q1: {dx: 0,   dy: 0, orientation: R0}
+  q2: {dx: 192, dy: 0, orientation: M0}

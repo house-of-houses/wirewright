@@ -1,0 +1,14 @@
+name: rc_highpass
+version: 1
+description: First-order RC high-pass filter (C in series, R to GND)
+priority: 100
+match:
+  components:
+    - {role: c, symbol: cap}
+    - {role: r, symbol: res}
+  topology:
+    - c.2 == r.1
+    - r.2 == GND
+placement:
+  c: {dx: 0,   dy: 0, orientation: R0}
+  r: {dx: 96,  dy: 0, orientation: R0}
