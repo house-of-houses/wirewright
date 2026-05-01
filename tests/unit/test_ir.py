@@ -75,3 +75,59 @@ def test_grid_alignment_enforced_after_placement() -> None:
     s.components[1].y = 0
     with pytest.raises(ValidationError, match="not on LTspice grid"):
         validate_placed(s)
+
+
+def test_validate_placed_rejects_bbox_overlap() -> None:
+    # Each res bbox is (0, 16, 32, 96). Origins (64, 64) and (64, 80) →
+    # bboxes (64, 80, 96, 160) and (64, 96, 96, 176) → overlap.
+    s = Schematic(
+        components=[
+            Component(ref="R1", symbol="res", pins={"1": "a", "2": "b"}, x=64, y=64),
+            Component(ref="R2", symbol="res", pins={"1": "b", "2": "0"}, x=64, y=80),
+        ],
+        nets=[Net("a"), Net("b"), Net("0", is_ground=True)],
+    )
+    with pytest.raises(ValidationError, match="overlap"):
+        validate_placed(s)
+
+
+def test_validate_placed_accepts_adjacent_bboxes() -> None:
+    # Horizontally separated by 64 units; res bbox is 32 wide → no overlap.
+    s = Schematic(
+        components=[
+            Component(ref="R1", symbol="res", pins={"1": "a", "2": "b"}, x=64, y=64),
+            Component(ref="R2", symbol="res", pins={"1": "b", "2": "0"}, x=128, y=64),
+        ],
+        nets=[Net("a"), Net("b"), Net("0", is_ground=True)],
+    )
+    validate_placed(s)
+
+
+def test_validate_placed_handles_rotated_bbox_correctly() -> None:
+    # res bbox (0, 16, 32, 96) rotated R90 around origin → AABB (-96, 0, -16, 32).
+    # R1 at (192, 208) R90 → bbox (96, 208, 176, 240).
+    # R2 at (160, 208) R0 → bbox (160, 224, 192, 304).
+    # x (96..176) ∩ (160..192) overlaps; y (208..240) ∩ (224..304) overlaps.
+    s = Schematic(
+        components=[
+            Component(
+                ref="R1",
+                symbol="res",
+                pins={"1": "a", "2": "b"},
+                x=192,
+                y=208,
+                orientation="R90",
+            ),
+            Component(
+                ref="R2",
+                symbol="res",
+                pins={"1": "b", "2": "0"},
+                x=160,
+                y=208,
+                orientation="R0",
+            ),
+        ],
+        nets=[Net("a"), Net("b"), Net("0", is_ground=True)],
+    )
+    with pytest.raises(ValidationError, match="overlap"):
+        validate_placed(s)

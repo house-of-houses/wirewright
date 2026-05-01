@@ -76,18 +76,33 @@ def _check_grid_alignment(s: Schematic) -> None:
 
 
 def _check_no_overlap(s: Schematic) -> None:
-    """Approximate check: no two components share an exact origin.
+    """Reject any pair of components whose oriented bounding boxes overlap."""
+    from wirewright.symbols.builtin import rotate_offset, symbol_geometry
 
-    A real overlap check needs symbol bounding boxes, which the symbols module
-    will provide. For v0.0.1 this catches the most obvious bugs.
-    """
-    seen: dict[tuple[int, int], str] = {}
+    placed: list[tuple[str, tuple[int, int, int, int]]] = []
     for c in s.components:
         if c.x is None or c.y is None:
             continue
-        key = (c.x, c.y)
-        if key in seen:
-            raise ValidationError(
-                f"Components {seen[key]!r} and {c.ref!r} placed at the same origin ({c.x}, {c.y})"
-            )
-        seen[key] = c.ref
+        try:
+            geo = symbol_geometry(c.symbol)
+        except KeyError:
+            continue  # unknown symbol — caught elsewhere
+        x1, y1, x2, y2 = geo.bbox
+        # Rotate the four bbox corners around the symbol origin and re-min/re-max
+        # to handle non-R0 orientations (including the four mirror variants).
+        corners = [
+            rotate_offset((x1, y1), c.orientation),
+            rotate_offset((x2, y1), c.orientation),
+            rotate_offset((x1, y2), c.orientation),
+            rotate_offset((x2, y2), c.orientation),
+        ]
+        rxs = [p[0] for p in corners]
+        rys = [p[1] for p in corners]
+        bbox = (c.x + min(rxs), c.y + min(rys), c.x + max(rxs), c.y + max(rys))
+        placed.append((c.ref, bbox))
+
+    for i, (ref_a, a) in enumerate(placed):
+        for ref_b, b in placed[i + 1 :]:
+            # Touching edges are not overlap; strict less-than.
+            if a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]:
+                raise ValidationError(f"Components {ref_a!r} and {ref_b!r} bounding boxes overlap")
