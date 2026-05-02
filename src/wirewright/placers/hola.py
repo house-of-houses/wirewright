@@ -30,7 +30,7 @@ from typing import Any
 from wirewright.ir.model import Schematic
 from wirewright.ir.validate import LTSPICE_GRID, validate, validate_placed
 from wirewright.placers.base import Placer, PlacerEngineError, PlacerError
-from wirewright.routing.orthogonal import l_shape_avoiding, snap_to_grid
+from wirewright.routing.orthogonal import route_avoiding, snap_to_grid
 from wirewright.routing.rails import emit_power_ground_rails
 from wirewright.symbols.builtin import absolute_pin_position, symbol_geometry
 
@@ -211,7 +211,7 @@ class HolaPlacer(Placer):
             for wire_target in pin_positions[1:]:
                 if wire_target == wire_anchor:
                     continue
-                out.wires.extend(l_shape_avoiding(wire_anchor, wire_target, obstacles))
+                out.wires.extend(route_avoiding(wire_anchor, wire_target, obstacles))
 
         # Power/ground as global rails (top of canvas for power, bottom for ground).
         out.flags = []

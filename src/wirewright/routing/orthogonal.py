@@ -82,6 +82,10 @@ def l_shape_avoiding(
     This picks whichever crosses fewer ``obstacles`` (axis-aligned bboxes
     given as ``(x_min, y_min, x_max, y_max)``). Ties go to HV so legacy
     behavior is preserved on obstacle-free graphs.
+
+    For multi-obstacle situations where both L options cross something,
+    use :func:`route_avoiding` instead — it tries Z-shape detours around
+    the obstacle bbox extremes.
     """
     ax, ay = snap_to_grid(a)
     bx, by = snap_to_grid(b)
@@ -95,3 +99,68 @@ def l_shape_avoiding(
 
     chosen = hv if hv_cost <= vh_cost else vh
     return [Wire(s[0][0], s[0][1], s[1][0], s[1][1]) for s in chosen]
+
+
+def _path_score(
+    path: list[tuple[int, int]],
+    obstacles: list[tuple[int, int, int, int]],
+) -> tuple[int, int]:
+    """Score a path: ``(crossings, total_length)``. Lower is better."""
+    crossings = 0
+    length = 0
+    for i in range(len(path) - 1):
+        crossings += _segment_crossings((path[i], path[i + 1]), obstacles)
+        length += abs(path[i + 1][0] - path[i][0]) + abs(path[i + 1][1] - path[i][1])
+    return crossings, length
+
+
+def route_avoiding(
+    a: tuple[int, int],
+    b: tuple[int, int],
+    obstacles: list[tuple[int, int, int, int]],
+) -> list[Wire]:
+    """Manhattan-route ``a`` to ``b`` avoiding obstacle bboxes.
+
+    Tries L-shape (2 options); if both cross obstacles, also tries 4
+    Z-shape detours that route around the obstacle-bbox extremes (above,
+    below, left of, right of *all* obstacles). Picks the path with
+    minimum ``(crossings, total_length)``. Empty obstacle list reduces to
+    standard L-shape with HV preference.
+    """
+    ax, ay = snap_to_grid(a)
+    bx, by = snap_to_grid(b)
+    if ax == bx or ay == by:
+        return [Wire(ax, ay, bx, by)]
+
+    candidates: list[list[tuple[int, int]]] = [
+        [(ax, ay), (bx, ay), (bx, by)],  # HV (horizontal-first L)
+        [(ax, ay), (ax, by), (bx, by)],  # VH (vertical-first L)
+    ]
+
+    if obstacles:
+        margin = LTSPICE_GRID
+        all_x_min = min(o[0] for o in obstacles) - margin
+        all_y_min = min(o[1] for o in obstacles) - margin
+        all_x_max = max(o[2] for o in obstacles) + margin
+        all_y_max = max(o[3] for o in obstacles) + margin
+        top_y = snap_to_grid((0, all_y_min))[1]
+        bot_y = snap_to_grid((0, all_y_max))[1]
+        left_x = snap_to_grid((all_x_min, 0))[0]
+        right_x = snap_to_grid((all_x_max, 0))[0]
+
+        # Z-above: vertical → horizontal-above-everything → vertical-down → horizontal-to-b.
+        candidates.append([(ax, ay), (ax, top_y), (bx, top_y), (bx, by)])
+        # Z-below
+        candidates.append([(ax, ay), (ax, bot_y), (bx, bot_y), (bx, by)])
+        # Z-left
+        candidates.append([(ax, ay), (left_x, ay), (left_x, by), (bx, by)])
+        # Z-right
+        candidates.append([(ax, ay), (right_x, ay), (right_x, by), (bx, by)])
+
+    best = min(candidates, key=lambda p: _path_score(p, obstacles))
+
+    wires: list[Wire] = []
+    for i in range(len(best) - 1):
+        if best[i] != best[i + 1]:
+            wires.append(Wire(best[i][0], best[i][1], best[i + 1][0], best[i + 1][1]))
+    return wires

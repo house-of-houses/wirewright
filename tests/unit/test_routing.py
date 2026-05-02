@@ -60,3 +60,40 @@ def test_l_shape_avoiding_colinear_returns_single_segment() -> None:
 
     wires = l_shape_avoiding((0, 64), (96, 64), [(32, 32, 80, 80)])
     assert len(wires) == 1
+
+
+def test_route_avoiding_no_obstacles_matches_l_shape() -> None:
+    from wirewright.routing.orthogonal import l_shape, route_avoiding
+
+    wires = route_avoiding((0, 0), (96, 96), [])
+    expected = l_shape((0, 0), (96, 96))
+    assert [(w.x1, w.y1, w.x2, w.y2) for w in wires] == [(w.x1, w.y1, w.x2, w.y2) for w in expected]
+
+
+def test_route_avoiding_beats_plain_l_shape_when_hv_is_blocked() -> None:
+    from wirewright.routing.orthogonal import _path_score, l_shape, route_avoiding
+
+    # Obstacle blocks HV's horizontal segment but VH (or a Z) is free.
+    obstacles = [(16, -16, 144, 16)]
+    a, b = (0, 0), (160, 80)
+
+    avoiding = route_avoiding(a, b, obstacles)
+    avoiding_pts = [(avoiding[0].x1, avoiding[0].y1)] + [(w.x2, w.y2) for w in avoiding]
+    avoiding_crossings, _ = _path_score(avoiding_pts, obstacles)
+
+    l_only = l_shape(a, b)
+    l_pts = [(l_only[0].x1, l_only[0].y1)] + [(w.x2, w.y2) for w in l_only]
+    l_crossings, _ = _path_score(l_pts, obstacles)
+
+    assert avoiding_crossings < l_crossings
+
+
+def test_route_avoiding_picks_zero_crossing_path_when_available() -> None:
+    """The Z-shape should find a path that fully avoids a small mid-canvas obstacle."""
+    from wirewright.routing.orthogonal import _path_score, route_avoiding
+
+    obstacles = [(48, -16, 112, 16)]  # blocks HV's horizontal segment
+    wires = route_avoiding((0, 0), (160, 64), obstacles)
+    pts = [(wires[0].x1, wires[0].y1)] + [(w.x2, w.y2) for w in wires]
+    crossings, _ = _path_score(pts, obstacles)
+    assert crossings == 0
