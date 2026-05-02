@@ -113,6 +113,31 @@ def render(
 
 
 @app.command()
+def diff(
+    original: Annotated[Path, typer.Argument(help="Original .asc (placer output)")],
+    edited: Annotated[Path, typer.Argument(help="Edited .asc (your hand-edits)")],
+) -> None:
+    """Diff two .asc files; surface what the user changed.
+
+    Useful for the manual-edit feedback loop: render via HOLA, edit to taste
+    in LTspice, run ``wirewright diff`` to see structured differences. Each
+    moved/rotated component is feedback to the placer; each wire change is
+    feedback to the router.
+    """
+    from wirewright.diff import diff_asc_files, format_diff
+
+    if not original.exists():
+        console.print(f"[red]not found:[/red] {original}")
+        raise typer.Exit(code=1)
+    if not edited.exists():
+        console.print(f"[red]not found:[/red] {edited}")
+        raise typer.Exit(code=1)
+
+    result = diff_asc_files(original.read_text(), edited.read_text())
+    console.print(format_diff(result))
+
+
+@app.command()
 def placers() -> None:
     """List available placement back ends."""
     from wirewright.placers import registry
