@@ -27,10 +27,11 @@ import subprocess
 import sys
 from typing import Any
 
-from wirewright.ir.model import Flag, Schematic, Wire
+from wirewright.ir.model import Schematic
 from wirewright.ir.validate import LTSPICE_GRID, validate, validate_placed
 from wirewright.placers.base import Placer, PlacerEngineError, PlacerError
 from wirewright.routing.orthogonal import l_shape_avoiding, snap_to_grid
+from wirewright.routing.rails import emit_power_ground_rails
 from wirewright.symbols.builtin import absolute_pin_position, symbol_geometry
 
 
@@ -212,22 +213,11 @@ class HolaPlacer(Placer):
                     continue
                 out.wires.extend(l_shape_avoiding(wire_anchor, wire_target, obstacles))
 
-        # Power/ground rails as flags + stub wires.
+        # Power/ground as global rails (top of canvas for power, bottom for ground).
         out.flags = []
-        nets_by_name = {n.name: n for n in out.nets}
-        for c in out.components:
-            assert c.x is not None and c.y is not None, f"{c.ref!r} unplaced"
-            for pin_name, net_name in c.pins.items():
-                net = nets_by_name.get(net_name)
-                if net is None:
-                    continue
-                pos = absolute_pin_position((c.x, c.y), c.symbol, pin_name, c.orientation)
-                if net.is_ground or net.name == "0":
-                    stub_y = pos[1] + LTSPICE_GRID * 2
-                    out.wires.append(Wire(pos[0], pos[1], pos[0], stub_y))
-                    out.flags.append(Flag(pos[0], stub_y, "0"))
-                elif net.is_power:
-                    out.flags.append(Flag(pos[0], pos[1], net.name))
+        rail_wires, rail_flags = emit_power_ground_rails(out)
+        out.wires.extend(rail_wires)
+        out.flags.extend(rail_flags)
 
         out.wires = [w for w in out.wires if (w.x1, w.y1) != (w.x2, w.y2)]
 

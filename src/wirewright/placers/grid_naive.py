@@ -14,10 +14,11 @@ import math
 from collections import defaultdict
 from typing import Any
 
-from wirewright.ir.model import Component, Flag, Schematic, Wire
-from wirewright.ir.validate import LTSPICE_GRID, validate, validate_placed
+from wirewright.ir.model import Component, Flag, Schematic
+from wirewright.ir.validate import validate, validate_placed
 from wirewright.placers.base import Placer
 from wirewright.routing.orthogonal import l_shape
+from wirewright.routing.rails import emit_power_ground_rails
 from wirewright.symbols import absolute_pin_position, symbol_geometry
 
 # Grid spacing for the naive placer. 16 = LTspice grid; 8 grid cells = 128 IR units.
@@ -74,36 +75,10 @@ class NaivePlacer(Placer):
             pins = net_pins.get(net.name, [])
             if not pins:
                 continue
-
-            if net.is_ground or net.name == "0":
-                # Drop a GND flag at every pin connected to ground.
-                for comp, pin_name in pins:
-                    px, py = absolute_pin_position(
-                        (comp.x or 0, comp.y or 0),
-                        comp.symbol,
-                        pin_name,
-                        comp.orientation,
-                    )
-                    # Stub wire down from the pin to a clear point, then GND flag.
-                    stub_y = py + LTSPICE_GRID * 2
-                    out.wires.append(Wire(px, py, px, stub_y))
-                    out.flags.append(Flag(px, stub_y, "0"))
-                continue
-
-            if net.is_power:
-                # Label power nets at every pin connection.
-                for comp, pin_name in pins:
-                    px, py = absolute_pin_position(
-                        (comp.x or 0, comp.y or 0),
-                        comp.symbol,
-                        pin_name,
-                        comp.orientation,
-                    )
-                    out.flags.append(Flag(px, py, net.name))
-                continue
+            if net.is_ground or net.name == "0" or net.is_power:
+                continue  # handled by emit_power_ground_rails below
 
             # Ordinary signal net: connect pairwise pins with L-shaped wires.
-            # This is the visually-bad "spaghetti" the real placers replace.
             positions = [
                 absolute_pin_position((c.x or 0, c.y or 0), c.symbol, p, c.orientation)
                 for c, p in pins
@@ -116,6 +91,11 @@ class NaivePlacer(Placer):
             # so the user can see which net is which.
             if len(pins) >= 2:
                 out.flags.append(Flag(anchor[0], anchor[1], net.name))
+
+        # Power/ground as global rails.
+        rail_wires, rail_flags = emit_power_ground_rails(out)
+        out.wires.extend(rail_wires)
+        out.flags.extend(rail_flags)
 
         validate_placed(out)
         return out
