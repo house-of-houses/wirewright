@@ -35,7 +35,7 @@ uv run python tools/render_compare.py fixtures/medium    # A/B both placers (Pha
 
 See `docs/PLAN.md` for the full plan. Update the line below when a phase is complete.
 
-**Current phase**: 3 complete (libavoid deferred — see PLAN.md); Phase 4 (patterns from failure log) starting.
+**Current phase**: v0.1 ready for tag. Phase 4 deferred to v0.2 — HOLA output acceptable per Phase 3 visual review, no failure-log entries justify speculative pattern work.
 
 ## Workflow expectations
 

@@ -84,7 +84,7 @@ The North Star: a deterministic, configurable placer that converts SPICE netlist
 
 **Depends on**: Phase 3. This is the last phase before v0.1 ships.
 
-**Status**: 7 starter templates ship from the v0.1 spike (`rc_lowpass`, `rc_highpass`, `diff_pair_{npn,pnp}`, `current_mirror_{npn,pnp}`, `common_emitter_npn`). Whether they survive to v0.1-final depends on Phase 3's failure log — patterns that don't fix anything in the expanded fixture set get archived rather than maintained.
+**Status**: deferred to v0.2. The user's Phase 3 visual review found HOLA output acceptable across the corpus with only minor wire-overlap issues — i.e. the failure log doesn't justify speculative pattern work for v0.1, per ADR-0005's discipline (write patterns that fix categorized failures, not pre-author a library and hope). The 7 starter templates from the spike (`rc_lowpass`, `rc_highpass`, `diff_pair_{npn,pnp}`, `current_mirror_{npn,pnp}`, `common_emitter_npn`) and the matcher infrastructure stay in the repo as v0.2 seed; they correctly match real idioms in the existing fixtures (the 5 expo-converter fixtures all match `current_mirror_pnp` + `diff_pair_npn`; the VCF chain fixtures match `rc_lowpass` 4× each). What's missing for v0.2: HOLA pinned-hint integration via `hola_graph.HolaGraph.add_node(x=, y=)` so `--use-patterns --placer hola` actually changes layout (currently only NaivePlacer honors `pinned`).
 
 ---
 
