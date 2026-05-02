@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "wirewright"
-version = "0.0.1"
+version = "0.2.0.dev0"
 description = "Auto-generate readable LTspice .asc schematics from SPICE netlists"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -832,7 +832,7 @@ wheels = [
 
 [[package]]
 name = "wirewright"
-version = "0.0.1"
+version = "0.2.0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "hola-graph" },

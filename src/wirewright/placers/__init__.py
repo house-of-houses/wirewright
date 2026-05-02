@@ -4,6 +4,8 @@ from wirewright.placers.base import Placer, PlacerEngineError, PlacerError
 from wirewright.placers.grid_naive import NaivePlacer
 
 __all__ = [
+    "AutoPlacer",
+    "HolaPlacer",
     "NaivePlacer",
     "Placer",
     "PlacerEngineError",
@@ -23,9 +25,11 @@ def get_placer(name: str) -> Placer:
 
 # Lazy-import HOLA so a missing hola-graph dep doesn't break the CLI for
 # users who only need naive placement.
+from wirewright.placers.auto import AutoPlacer  # noqa: E402
 from wirewright.placers.hola import HolaPlacer  # noqa: E402
 
 registry: dict[str, type[Placer]] = {
     "naive": NaivePlacer,
     "hola": HolaPlacer,
+    "auto": AutoPlacer,
 }
