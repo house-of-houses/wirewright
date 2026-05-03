@@ -2,6 +2,7 @@
 
 from wirewright.placers.base import Placer, PlacerEngineError, PlacerError
 from wirewright.placers.grid_naive import NaivePlacer
+from wirewright.routing.rails import RailMode
 
 __all__ = [
     "AutoPlacer",
@@ -15,12 +16,12 @@ __all__ = [
 ]
 
 
-def get_placer(name: str) -> Placer:
+def get_placer(name: str, rails: RailMode = "clustered") -> Placer:
     """Look up a placer by short name (the ``--placer`` CLI argument)."""
     if name not in registry:
         available = sorted(registry)
         raise KeyError(f"Unknown placer {name!r}. Available: {available}")
-    return registry[name]()
+    return registry[name](rails=rails)
 
 
 # Lazy-import HOLA so a missing hola-graph dep doesn't break the CLI for

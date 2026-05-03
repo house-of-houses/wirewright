@@ -18,7 +18,7 @@ from wirewright.ir.model import Component, Flag, Schematic
 from wirewright.ir.validate import validate, validate_placed
 from wirewright.placers.base import Placer
 from wirewright.routing.orthogonal import l_shape
-from wirewright.routing.rails import emit_power_ground_rails
+from wirewright.routing.rails import RailMode, emit_power_ground_rails
 from wirewright.symbols import absolute_pin_position, symbol_geometry
 
 # Grid spacing for the naive placer. 16 = LTspice grid; 8 grid cells = 128 IR units.
@@ -31,6 +31,9 @@ class NaivePlacer(Placer):
     """Drop every component into a grid cell, no overlap, simple wire stubs."""
 
     name = "naive"
+
+    def __init__(self, rails: RailMode = "clustered") -> None:
+        self.rails = rails
 
     def place(
         self,
@@ -92,8 +95,8 @@ class NaivePlacer(Placer):
             if len(pins) >= 2:
                 out.flags.append(Flag(anchor[0], anchor[1], net.name))
 
-        # Power/ground as global rails.
-        rail_wires, rail_flags = emit_power_ground_rails(out)
+        # Power/ground rails (clustered by default; see RailMode docstring).
+        rail_wires, rail_flags = emit_power_ground_rails(out, mode=self.rails)
         out.wires.extend(rail_wires)
         out.flags.extend(rail_flags)
 

@@ -31,7 +31,7 @@ from wirewright.ir.model import Schematic
 from wirewright.ir.validate import LTSPICE_GRID, validate, validate_placed
 from wirewright.placers.base import Placer, PlacerEngineError, PlacerError
 from wirewright.routing.orthogonal import route_avoiding, snap_to_grid
-from wirewright.routing.rails import emit_power_ground_rails
+from wirewright.routing.rails import RailMode, emit_power_ground_rails
 from wirewright.symbols.builtin import absolute_pin_position, symbol_geometry
 
 
@@ -131,6 +131,9 @@ class HolaPlacer(Placer):
     """Stress-majorization placement via the HOLA algorithm (hola-graph)."""
 
     name = "hola"
+
+    def __init__(self, rails: RailMode = "clustered") -> None:
+        self.rails = rails
 
     def place(
         self,
@@ -248,9 +251,9 @@ class HolaPlacer(Placer):
                     continue
                 out.wires.extend(route_avoiding(wire_anchor, wire_target, obstacles))
 
-        # Power/ground as global rails (top of canvas for power, bottom for ground).
+        # Power/ground rails (clustered by default; see RailMode docstring).
         out.flags = []
-        rail_wires, rail_flags = emit_power_ground_rails(out)
+        rail_wires, rail_flags = emit_power_ground_rails(out, mode=self.rails)
         out.wires.extend(rail_wires)
         out.flags.extend(rail_flags)
 

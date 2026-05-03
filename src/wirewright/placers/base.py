@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from wirewright.ir.model import Schematic
+
+if TYPE_CHECKING:
+    from wirewright.routing.rails import RailMode
 
 
 class PlacerError(Exception):
@@ -23,9 +26,15 @@ class Placer(ABC):
     Implementations must be pure (no mutation of the input), total (place
     every component), validating (output passes ``ir.validate.validate_placed``),
     deterministic (same input + hints = same output), and grid-snapped.
+
+    All placers accept a ``rails`` constructor option selecting the
+    power/ground rendering mode. See :data:`wirewright.routing.rails.RailMode`.
     """
 
     name: str
+
+    def __init__(self, rails: RailMode = "clustered") -> None:
+        self.rails = rails
 
     @abstractmethod
     def place(

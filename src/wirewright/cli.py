@@ -11,7 +11,7 @@ Usage::
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast
 
 import typer
 from rich.console import Console
@@ -22,6 +22,7 @@ from wirewright.emit.asc import emit_asc, write_asc
 from wirewright.ir.model import Component, Net, Schematic
 from wirewright.parse.spice import parse_spice_file
 from wirewright.placers import get_placer
+from wirewright.routing.rails import RailMode
 
 app = typer.Typer(
     name="wirewright",
@@ -47,13 +48,20 @@ def demo(
         str,
         typer.Option("--placer", help="Which placer to use."),
     ] = "naive",
+    rails: Annotated[
+        str,
+        typer.Option(
+            "--rails",
+            help="Power/ground rendering: 'scattered' (FLAG per pin), 'clustered' (local rails per cluster, default), 'global' (one cross-canvas rail per net).",
+        ),
+    ] = "clustered",
 ) -> None:
     """Run a hard-coded 2-resistor circuit through the full pipeline.
 
     Useful as a sanity check that everything is wired up correctly.
     """
     schematic = _build_demo_schematic()
-    placer_obj = get_placer(placer)
+    placer_obj = get_placer(placer, rails=cast(RailMode, rails))
     placed = placer_obj.place(schematic)
     asc_text = emit_asc(placed)
 
@@ -82,6 +90,13 @@ def render(
             help="Detect analog idioms (diff pair, current mirror, RC filter, …) and pin them to canonical positions before placement.",
         ),
     ] = False,
+    rails: Annotated[
+        str,
+        typer.Option(
+            "--rails",
+            help="Power/ground rendering: 'scattered' (FLAG per pin), 'clustered' (local rails per cluster, default), 'global' (one cross-canvas rail per net).",
+        ),
+    ] = "clustered",
 ) -> None:
     """Render a SPICE netlist to an LTspice .asc file."""
     if not netlist.exists():
@@ -89,7 +104,7 @@ def render(
         raise typer.Exit(code=1)
 
     schematic = parse_spice_file(netlist)
-    placer_obj = get_placer(placer)
+    placer_obj = get_placer(placer, rails=cast(RailMode, rails))
     hints: dict[str, object] | None = None
     if use_patterns:
         from wirewright.patterns.orchestrate import build_hints_from_patterns

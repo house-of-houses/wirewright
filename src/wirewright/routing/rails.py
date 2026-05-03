@@ -1,33 +1,73 @@
 """Power/ground rail synthesis.
 
-After component placement, ground/power nets get drawn as global horizontal
-rails (top of canvas for power, bottom for ground) instead of as scattered
-FLAGs on individual pins. This is the v0.2 quality fix: scattered ground
-flags are visually noisy, especially on transistor-heavy schematics where
-every emitter has its own little FLAG cluster.
+After component placement, ground/power nets get rendered as one of three
+visual styles selected by ``mode``:
 
-Per :doc:`docs/specs/placer-interface.md` "Power and ground handling": every
-placer back end emits these as global rails, not as ordinary edges.
+- ``"scattered"`` — one FLAG per pin, no rail wires (LTspice default).
+  Good when pins are spread thin across the canvas.
+- ``"clustered"`` (default) — pins are 1-D clustered by x-proximity.
+  Each cluster of size ≥2 gets its own short horizontal rail segment with
+  one FLAG; singleton clusters drop a FLAG at the pin position with no
+  stub. Best general-purpose choice.
+- ``"global"`` — every pin on the same net is wired to one cross-canvas
+  rail (top for power, bottom for ground). Visually clean on tightly
+  packed schematics; noisy on sparse ones.
+
+Per :doc:`docs/specs/placer-interface.md` "Power and ground handling":
+every placer back end emits these via this helper.
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import Literal
 
 from wirewright.ir.model import Component, Flag, Schematic, Wire
 from wirewright.ir.validate import LTSPICE_GRID
 from wirewright.symbols.builtin import absolute_pin_position
 
+RailMode = Literal["scattered", "clustered", "global"]
+
 _RAIL_OFFSET = LTSPICE_GRID * 4
 """Distance from the canvas extremum to the rail itself."""
 
+_DEFAULT_CLUSTER_GAP = LTSPICE_GRID * 6
+"""x-distance threshold for joining adjacent pins in clustered mode (~one
+component-width-and-a-half). Pins closer than this group together; pins
+farther apart become separate rail segments."""
 
-def emit_power_ground_rails(schematic: Schematic) -> tuple[list[Wire], list[Flag]]:
+
+def _cluster_by_x(
+    positions: list[tuple[int, int]], gap_threshold: int
+) -> list[list[tuple[int, int]]]:
+    """Group pin positions into x-adjacent clusters.
+
+    Sorts by x, then splits whenever the gap to the previous pin exceeds
+    ``gap_threshold``. Singletons stay as length-1 clusters.
+    """
+    if not positions:
+        return []
+    sorted_pins = sorted(positions, key=lambda p: p[0])
+    clusters: list[list[tuple[int, int]]] = [[sorted_pins[0]]]
+    for p in sorted_pins[1:]:
+        if p[0] - clusters[-1][-1][0] <= gap_threshold:
+            clusters[-1].append(p)
+        else:
+            clusters.append([p])
+    return clusters
+
+
+def emit_power_ground_rails(
+    schematic: Schematic,
+    mode: RailMode = "clustered",
+    cluster_gap: int = _DEFAULT_CLUSTER_GAP,
+) -> tuple[list[Wire], list[Flag]]:
     """Compute rail wires + FLAGs for every power/ground net.
 
     Returns ``(extra_wires, extra_flags)``. Caller appends them to the
     schematic. Skips silently when the schematic has no placed components,
-    no nets, or no power/ground membership.
+    no nets, or no power/ground membership. ``mode`` selects the visual
+    style — see module docstring for tradeoffs.
     """
     if not schematic.components:
         return [], []
@@ -56,18 +96,36 @@ def emit_power_ground_rails(schematic: Schematic) -> tuple[list[Wire], list[Flag
     if not ground_pins and not power_pins:
         return [], []
 
-    # Canvas extent — used to position the rails outside all component bodies.
-    min_y, max_y = _component_y_extent(placed)
-
     extra_wires: list[Wire] = []
     extra_flags: list[Flag] = []
 
-    # Ground rail: below the lowest component.
+    if mode == "scattered":
+        for net_name, positions in ground_pins.items():
+            for px, py in positions:
+                extra_flags.append(Flag(px, py, net_name))
+        for net_name, positions in power_pins.items():
+            for px, py in positions:
+                extra_flags.append(Flag(px, py, net_name))
+        return extra_wires, extra_flags
+
+    # Both clustered and global modes need rail bands.
+    min_y, max_y = _component_y_extent(placed)
+
+    if mode == "clustered":
+        for net_name, positions in ground_pins.items():
+            rail_y = max_y + _RAIL_OFFSET
+            for cluster in _cluster_by_x(positions, cluster_gap):
+                _emit_cluster(cluster, rail_y, net_name, extra_wires, extra_flags, going_down=True)
+        for i, (net_name, positions) in enumerate(sorted(power_pins.items())):
+            rail_y = min_y - _RAIL_OFFSET - i * (LTSPICE_GRID * 4)
+            for cluster in _cluster_by_x(positions, cluster_gap):
+                _emit_cluster(cluster, rail_y, net_name, extra_wires, extra_flags, going_down=False)
+        return extra_wires, extra_flags
+
+    # mode == "global": one rail per net, spanning everything.
     for net_name, positions in ground_pins.items():
         rail_y = max_y + _RAIL_OFFSET
         _emit_rail(positions, rail_y, net_name, extra_wires, extra_flags, going_down=True)
-
-    # Power rails: above the highest component, stacked if multiple.
     for i, (net_name, positions) in enumerate(sorted(power_pins.items())):
         rail_y = min_y - _RAIL_OFFSET - i * (LTSPICE_GRID * 4)
         _emit_rail(positions, rail_y, net_name, extra_wires, extra_flags, going_down=False)
@@ -128,6 +186,27 @@ def _emit_rail(
         flags.append(Flag(flag_x, terminus, "0"))
     else:
         flags.append(Flag(flag_x, rail_y, net_name))
+
+
+def _emit_cluster(
+    cluster: list[tuple[int, int]],
+    rail_y: int,
+    net_name: str,
+    wires: list[Wire],
+    flags: list[Flag],
+    going_down: bool,
+) -> None:
+    """Emit one local rail per cluster.
+
+    Multi-pin clusters get the same shape as a global rail (stubs + a
+    horizontal segment + one FLAG) but spanning only this cluster's x
+    extent. Singletons get the stub-and-FLAG without the horizontal
+    segment, so the FLAG lands in the same rail band as its neighbors
+    rather than overlapping the component body.
+    """
+    if not cluster:
+        return
+    _emit_rail(cluster, rail_y, net_name, wires, flags, going_down=going_down)
 
 
 def remove_per_pin_rail_flags(schematic: Schematic) -> None:

@@ -13,12 +13,16 @@ from typing import Any
 from wirewright.ir.model import Schematic
 from wirewright.placers.base import Placer, PlacerEngineError
 from wirewright.placers.grid_naive import NaivePlacer
+from wirewright.routing.rails import RailMode
 
 
 class AutoPlacer(Placer):
     """Try HOLA first; fall back to NaivePlacer on PlacerEngineError."""
 
     name = "auto"
+
+    def __init__(self, rails: RailMode = "clustered") -> None:
+        self.rails = rails
 
     def place(
         self,
@@ -28,6 +32,6 @@ class AutoPlacer(Placer):
         from wirewright.placers.hola import HolaPlacer
 
         try:
-            return HolaPlacer().place(schematic, hints=hints)
+            return HolaPlacer(rails=self.rails).place(schematic, hints=hints)
         except PlacerEngineError:
-            return NaivePlacer().place(schematic, hints=hints)
+            return NaivePlacer(rails=self.rails).place(schematic, hints=hints)
