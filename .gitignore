@@ -63,6 +63,10 @@ tools/elk-bridge/package-lock.json
 tests/fixtures/**/*.net
 tests/fixtures/**/*.asc
 
+# Local render comparison output (tools/render_compare.py default dir)
+_cmp/
+compare_out/
+
 # Claude Code local state (keep .claude/ structure but ignore runtime)
 .claude/local/
 .claude/settings.local.json
