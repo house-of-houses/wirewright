@@ -35,6 +35,30 @@ from wirewright.routing.rails import emit_power_ground_rails
 from wirewright.symbols.builtin import absolute_pin_position, symbol_geometry
 
 
+def _biconnect_leaf_extras(nodes: list[str], edges: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Virtual edges that chain each articulation point's leaf neighbors.
+
+    HOLA's planar-embedding step (``faces.cpp::identifyExternalFace``) aborts
+    on graphs where an articulation point dangles multiple degree-1 leaves —
+    the external face becomes ill-defined. Chaining the leaves into a path
+    (a→b, b→c, ...) per articulation point makes the graph 2-edge-connected
+    around the cut vertex without changing the visible topology that the
+    schematic actually wires (these extras are only used as input to the HOLA
+    layout solver, never emitted as IR wires).
+    """
+    import networkx as nx  # type: ignore[import-untyped]
+
+    g = nx.Graph()
+    g.add_nodes_from(nodes)
+    g.add_edges_from(edges)
+    extras: list[tuple[str, str]] = []
+    for cut in nx.articulation_points(g):
+        leaves = [n for n in g.neighbors(cut) if g.degree(n) == 1]
+        for i in range(len(leaves) - 1):
+            extras.append((leaves[i], leaves[i + 1]))
+    return extras
+
+
 def _stitching_edges(
     all_refs: list[str], existing_pairs: set[tuple[str, str]]
 ) -> list[tuple[str, str]]:
@@ -164,10 +188,21 @@ class HolaPlacer(Placer):
         edges.extend(_stitching_edges([c.ref for c in out.components], seen_pairs))
 
         # Run the layout in a subprocess so HOLA's C++ asserts in faces.cpp
-        # (and similar) don't kill the parent. The subprocess returns either
-        # a layout result on stdout or a non-zero exit (signal-coded for
-        # SIGABRT on assertion failure).
-        layout = _run_hola_subprocess(nodes, edges)
+        # (and similar) don't kill the parent. On the planar-embedding abort
+        # (faces.cpp::identifyExternalFace), retry once with virtual edges
+        # that chain articulation-point leaves — this fixes graphs where a
+        # cut vertex carries 3+ leaves, without regressing simpler paths
+        # where adding a leaf-chain edge would collapse the graph to K3.
+        component_refs = [c.ref for c in out.components]
+        try:
+            layout = _run_hola_subprocess(nodes, edges)
+        except PlacerEngineError as e:
+            if "identifyExternalFace" not in str(e):
+                raise
+            extras = _biconnect_leaf_extras(component_refs, edges)
+            if not extras:
+                raise
+            layout = _run_hola_subprocess(nodes, edges + extras)
 
         for c in out.components:
             node_layout = layout.get(c.ref)

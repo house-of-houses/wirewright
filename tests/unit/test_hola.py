@@ -61,3 +61,32 @@ def test_hola_deterministic() -> None:
     assert [(c.ref, c.x, c.y, c.orientation) for c in a.components] == [
         (c.ref, c.x, c.y, c.orientation) for c in b.components
     ]
+
+
+def test_biconnect_leaf_extras_chains_leaves_per_articulation_point() -> None:
+    from wirewright.placers.hola import _biconnect_leaf_extras
+
+    # Two articulation points (cut1, cut2) each holding leaves.
+    # cut1 → [a, b, c]; cut2 → [d, e]; cut1↔cut2 is the bridging edge.
+    edges = [
+        ("cut1", "a"),
+        ("cut1", "b"),
+        ("cut1", "c"),
+        ("cut1", "cut2"),
+        ("cut2", "d"),
+        ("cut2", "e"),
+    ]
+    nodes = ["cut1", "cut2", "a", "b", "c", "d", "e"]
+    extras = _biconnect_leaf_extras(nodes, edges)
+    # Chains a-b-c around cut1 (2 edges) and d-e around cut2 (1 edge).
+    assert len(extras) == 3
+    pairs = {tuple(sorted(e)) for e in extras}
+    assert pairs == {("a", "b"), ("b", "c"), ("d", "e")}
+
+
+def test_biconnect_leaf_extras_empty_when_no_articulation_leaves() -> None:
+    from wirewright.placers.hola import _biconnect_leaf_extras
+
+    # A simple cycle has no articulation points.
+    extras = _biconnect_leaf_extras(["a", "b", "c"], [("a", "b"), ("b", "c"), ("c", "a")])
+    assert extras == []

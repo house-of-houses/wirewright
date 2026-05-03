@@ -1,6 +1,7 @@
 # Issue 0001: HOLA C++ aborts on 3 canonical fixtures
 
 **Opened:** 2026-05-02
+**Resolved:** 2026-05-03 (fix path #2 — `_biconnect_leaf_extras` retry)
 **Severity:** Quality (workaround exists; HOLA layout unavailable for these)
 **Tags:** hola, placer, libdialect, upstream
 
@@ -92,11 +93,20 @@ for f in [
         print(f"{f}: {str(e)[:100]}")
 ```
 
-## Next time we look
+## Resolution (2026-05-03)
 
-Start with fix path #2(c): drop the stitching step and see what HOLA
-does with disconnected input. The earlier stitching was added to fix
-HOLA's "disconnected graph" abort, but maybe a per-component layout
-(loop over `nx.connected_components`, layout each, then assemble) is
-the cleaner approach now that subprocess isolation insulates us from
-both kinds of abort.
+Fix path #2 landed: `src/wirewright/placers/hola.py::_biconnect_leaf_extras`
+chains the leaves of every articulation point into a path, supplying
+virtual edges that give HOLA's planar embedding a well-defined external
+face. The chaining is **applied only on retry** after a first attempt
+aborts with `identifyExternalFace`, because pre-emptive chaining
+collapses small graphs (e.g. divider's 3-node path) into K3 — which HOLA
+also rejects.
+
+All 3 fixtures now render under `--placer hola` directly; the integration
+test `test_hola_renders_canonical_fixture` covers them.
+
+A per-component approach (fix path #2c) was investigated and discarded:
+the largest connected component of each fixture is itself the graph
+HOLA aborts on, so per-component layout doesn't help — the offending
+topology is inside one component.

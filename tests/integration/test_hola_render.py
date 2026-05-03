@@ -20,9 +20,11 @@ from wirewright.placers.hola import HolaPlacer
     [
         "easy/divider.net",
         "medium/tb303-envelope.net",
-        # hard fixture deliberately excluded: hola-graph's C++ aborts on this
-        # graph topology (faces.cpp:identifyExternalFace assertion). Python
-        # cannot catch the abort; subprocess isolation deferred to v0.2.
+        # Previously aborted in faces.cpp:identifyExternalFace; v0.2's
+        # leaf-biconnect graph pre-conditioning makes them layoutable.
+        "medium/tb303-vco-saw-cliptop.net",
+        "medium/tb303-vco-saw-cliptop-bottom.net",
+        "hard/tb303-vco-integrated.net",
     ],
 )
 def test_hola_renders_canonical_fixture(fixture_relpath: str) -> None:
