@@ -15,8 +15,10 @@
       "Bash(node:*)",
       "Bash(npm:*)"
     ],
+    "ask": [
+      "Bash(git push:*)"
+    ],
     "deny": [
-      "Bash(git push:*)",
       "Bash(rm -rf:*)"
     ]
   }
