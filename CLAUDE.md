@@ -35,7 +35,7 @@ uv run python tools/render_compare.py fixtures/medium    # A/B both placers (Pha
 
 See `docs/PLAN.md` for the full plan. Update the line below when a phase is complete.
 
-**Current phase**: v0.1 ready for tag. Phase 4 deferred to v0.2 — HOLA output acceptable per Phase 3 visual review, no failure-log entries justify speculative pattern work.
+**Current phase**: v0.2.0 ready for tag. All four planned items shipped (AutoPlacer, `wirewright diff`, HOLA-abort pre-conditioning, clustered power/ground rails) plus Z-shape obstacle routing. All 21 fixtures render via `--placer hola` directly; `auto` is the new CLI default.
 
 ## Workflow expectations
 

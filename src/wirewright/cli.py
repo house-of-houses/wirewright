@@ -46,8 +46,11 @@ def demo(
     ] = None,
     placer: Annotated[
         str,
-        typer.Option("--placer", help="Which placer to use."),
-    ] = "naive",
+        typer.Option(
+            "--placer",
+            help="Which placer to use. Default 'auto' tries HOLA first and falls back to naive on engine errors.",
+        ),
+    ] = "auto",
     rails: Annotated[
         str,
         typer.Option(
@@ -81,8 +84,11 @@ def render(
     ],
     placer: Annotated[
         str,
-        typer.Option("--placer", help="Which placer to use."),
-    ] = "naive",
+        typer.Option(
+            "--placer",
+            help="Which placer to use. Default 'auto' tries HOLA first and falls back to naive on engine errors.",
+        ),
+    ] = "auto",
     use_patterns: Annotated[
         bool,
         typer.Option(

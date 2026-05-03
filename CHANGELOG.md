@@ -2,6 +2,60 @@
 
 All notable changes to wirewright. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.0] — 2026-05-03
+
+Quality release. Every TB-303 fixture renders under `--placer hola`
+without aborts, power/ground gets a sensible default rendering, and the
+manual-edit feedback loop ships.
+
+### Added
+
+- **`--placer auto`** — tries HOLA, falls back to `naive` on
+  `PlacerEngineError`. Now the default for both `wirewright render` and
+  `wirewright demo`.
+- **`wirewright diff <a.asc> <b.asc>`** — structured before/after diff
+  on parsed `.asc` files (component moves/rotations, wire add/remove,
+  flag deltas). Closes the manual-edit feedback loop.
+- **`--rails {scattered,clustered,global}`** — power/ground rendering
+  mode. Default `clustered` 1-D-clusters pins by x-proximity (gap
+  threshold 6 grid units); each multi-pin cluster gets a short local
+  rail with one FLAG, singletons drop a stub-and-FLAG in the rail band.
+  `scattered` keeps a FLAG per pin; `global` is the v0.2-cycle one-rail-
+  per-net behavior.
+- **Z-shape detour routing** — `routing.orthogonal.route_avoiding`
+  picks from 2 L plus 4 Z candidates (around obstacle bbox extremes) by
+  `(crossings, total_length)`. Used by `HolaPlacer` for inter-pin wires.
+- **Issue tracker** — `docs/issues/` for things we deliberately don't
+  fix in core wirewright but want to remember (`0001`: HOLA aborts,
+  closed; `0002`: libavoid binding wait list).
+
+### Changed
+
+- **HOLA aborts resolved.** `_biconnect_leaf_extras` chains every
+  articulation point's leaves with virtual edges on retry after a first
+  attempt aborts in `faces.cpp::identifyExternalFace`. All 3 previously-
+  aborting fixtures (`tb303-vco-saw-cliptop`,
+  `tb303-vco-saw-cliptop-bottom`, `tb303-vco-integrated`) now render
+  via `--placer hola` directly.
+- `Placer` base class accepts `rails: RailMode` in `__init__`; all three
+  back ends honor it.
+
+### Known limitations carried into v0.3
+
+- HOLA pinned-hint integration still pending (so `--use-patterns
+  --placer hola` does not yet snap to canonical pattern positions —
+  matches still feed `NaivePlacer` only).
+- libavoid Python binding still does not exist (issue 0002 watch list).
+  Pure-Python L+Z router is what we ship.
+- Hand-drawn `.asc` round-trip references still user-deliverable.
+
+### Stats at release
+
+- 190 unit + integration tests passing; ruff and mypy clean.
+- 21/21 canonical TB-303 fixtures render under `--placer hola` directly.
+
+[0.2.0]: https://github.com/gertd/wirewright/releases/tag/v0.2.0
+
 ## [0.1.0] — 2026-05-02
 
 First public release. Renders SPICE netlists into LTspice `.asc` schematics
