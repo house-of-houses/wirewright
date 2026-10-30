@@ -308,6 +308,36 @@ Depends on Task 9 PASS.
 6. **Confirmation-bias in reviewer** addressed by blind A/B + randomized
    label mapping + locking metric before benchmark runs.
 
+## Changes from v2 (post advisor on 2026-10-30 after T3 commit)
+
+Rescope on advisor's four observations:
+
+- **T4 (idioms) deferred to post-T9.** Divider is R/R/V/GND — none of the 6
+  CMOS idioms fire. Critical path to the gate is translator → T5 → T6 →
+  T8 → T9. If T9 fails, T4 effort is wasted. Idiom list is a prompt-builder
+  parameter (empty list for divider).
+- **T6 translator by ref, not by typeName.** Deep-copy the input
+  ``Schematic``, lookup by ``name == ref``, set only ``x``, ``y``,
+  ``orientation``. Component identity preserved by construction.
+  typeName is advisory; prompt lists refs with symbols
+  (``R1:res Q3:npn ...``). This dissolves the CMOS/bipolar typeName
+  mismatch — the hypothesis becomes actually testable.
+- **T6 uses existing router for wiring.** EEschematic's wire output is
+  non-snapped ``(name, x, y)`` pairs; translating to ``Wire`` objects
+  = reimplementing a router. Reuse ``routing/orthogonal.py``: model
+  places → translator sets positions → existing router wires → T3
+  renders → model critiques routed result. ``validate_placed`` passes
+  by construction (axis-aligned, pins exact).
+- **T7 (wiring loop) off default path, not just "optional".** Only
+  revisit if T10 shows routing is the losing dimension in blind A/B.
+- Scale constants: ``1 EEschematic unit = 16 IR units``; Y flip (negate);
+  rotation string → ``R{n}``; flip ``"horizontal"`` → ``M0`` family
+  (verify with a translator unit test placing ``res`` at R90).
+- First live divider call runs with ``max_iters=3`` and prints per-call
+  cost before raising the ceiling.
+- ``uv sync`` must be invoked with ``--all-extras`` or every extra listed
+  — ``--extra`` *replaces* rather than adds.
+
 ## Changes from v1 (post adversarial review)
 
 - Blocker fixes: spec amendment task added (determinism), divider test
