@@ -32,6 +32,7 @@ class Placer(ABC):
     """
 
     name: str
+    deterministic: bool = True
 
     def __init__(self, rails: RailMode = "clustered") -> None:
         self.rails = rails

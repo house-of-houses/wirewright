@@ -15,7 +15,8 @@ from wirewright.ir.model import Schematic
 class Placer(ABC):
     """Abstract base for all placement back ends."""
 
-    name: str        # short identifier used by the CLI: "naive", "hola"
+    name: str              # short identifier used by the CLI: "naive", "hola"
+    deterministic: bool = True  # set False for stochastic back ends
 
     @abstractmethod
     def place(self, schematic: Schematic, hints: dict | None = None) -> Schematic:
@@ -36,7 +37,7 @@ class Placer(ABC):
 - **Pure**: must not mutate the input `Schematic`. Returns a new one.
 - **Total**: must place every component, even if the result is ugly. Throwing an error is only acceptable for genuinely impossible inputs (cycles in pinned constraints, missing symbol pin data).
 - **Validating**: the returned `Schematic` must pass `ir.validate.validate_placed(schematic)`.
-- **Deterministic**: same input + same hints = same output. (Random seeds, if used internally, must be fixed by the back end.)
+- **Deterministic**: same input + same hints = same output. (Random seeds, if used internally, must be fixed by the back end.) A placer whose output varies for identical inputs — for example one backed by a stochastic external model — MUST set the class attribute `deterministic = False`. The determinism assertion in `TestAnyPlacer` is skipped for such placers; every other invariant (purity, totality, validation, grid-snapping, connectivity) still applies.
 - **Grid-snapped**: every coordinate is a multiple of 16.
 - **Connecting**: every wire endpoint that the placer intended as a connection sits exactly on a component pin's absolute position. The emitter does not fix up imprecise endpoints.
 

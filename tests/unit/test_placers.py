@@ -63,6 +63,8 @@ class TestAnyPlacer:
             assert c.y % LTSPICE_GRID == 0
 
     def test_deterministic(self, placer: Placer) -> None:
+        if not type(placer).deterministic:
+            pytest.skip(f"{type(placer).__name__} is non-deterministic by contract")
         s = _two_resistors()
         a = placer.place(s)
         b = placer.place(s)
