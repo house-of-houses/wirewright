@@ -18,4 +18,4 @@ service = "fnox"
 [secrets]
 # EEschematic experiment on experiment/eeschematic branch. See
 # docs/plans/eeschematic-experiment.md.
-OPENAI_API_KEY = { provider = "keychain", value = "OPENAI_API_KEY" }
+OPENAI_API_KEY= { provider = "keychain", value = "OPENAI_API_KEY" }

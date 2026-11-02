@@ -246,6 +246,13 @@ Depends on Task 6.
 ### Task 9: Divider prove-out gate
 
 - Integration test from Task 1 passes.
+- Invocation uses `fnox exec --` to inject `OPENAI_API_KEY` from the
+  macOS keychain (see `fnox.toml` and https://fnox.jdx.dev). This keeps
+  the key out of shell history, out of the Claude Code transcript, and
+  out of any file in the repo. One-time setup: `fnox set OPENAI_API_KEY`
+  (or `pbpaste | fnox set OPENAI_API_KEY`). Then:
+  - Tests: `fnox exec -- uv run pytest tests/experiments/eeschematic/ -v -s`
+  - CLI: `fnox exec -- uv run wirewright render <net> --placer eeschematic -o out.asc`
 - `wirewright render tests/fixtures/easy/divider.net --placer eeschematic
   -o /tmp/divider-llm.asc` end-to-end.
 - Open `/tmp/divider-llm.asc` in LTspice: components placed, wires
