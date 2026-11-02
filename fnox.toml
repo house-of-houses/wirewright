@@ -1,0 +1,21 @@
+# fnox secret store for wirewright. See https://fnox.jdx.dev.
+#
+# Safe to commit — values live in the macOS keychain under service "fnox",
+# never in this file. One-time setup:
+#
+#   fnox set OPENAI_API_KEY      # paste the key once; stored in keychain
+#
+# Then every invocation that needs the key uses `fnox exec --`:
+#
+#   fnox exec -- uv run pytest tests/experiments/eeschematic/ -v -s
+#   fnox exec -- uv run wirewright render tests/fixtures/easy/divider.net \
+#     --placer eeschematic -o /tmp/divider-llm.asc
+
+[providers.keychain]
+type = "keychain"
+service = "fnox"
+
+[secrets]
+# EEschematic experiment on experiment/eeschematic branch. See
+# docs/plans/eeschematic-experiment.md.
+OPENAI_API_KEY = { provider = "keychain", value = "OPENAI_API_KEY" }
