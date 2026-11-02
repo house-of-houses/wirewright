@@ -15,7 +15,7 @@ v0.2.0 shipped. The 2026-10 research pass surfaced four 2025–2026
 papers directly or adjacently attacking the schematic-placement
 problem; EEschematic (arXiv 2510.17002, Oct 2025) is the closest
 architectural match. Authors released MIT-licensed code at
-https://github.com/eelab-dev/EEschematic. v0.2.md listed this as
+<https://github.com/eelab-dev/EEschematic>. v0.2.md listed this as
 "unscheduled" — now scheduling.
 
 Question: **does an MLLM placer with a 6-idiom few-shot library beat
@@ -61,6 +61,7 @@ Pre-defined before any benchmark output is seen, to kill
 confirmation-bias.
 
 **Structural score** (computed, no human in loop):
+
 - `wire_length_total` — sum of Manhattan distances; lower better
 - `wire_crossings` — count of orthogonal wire–wire crossings; lower better
 - `bbox_overlaps` — count via existing `validate_placed`; must be zero
@@ -69,6 +70,7 @@ confirmation-bias.
 Reported per fixture. No single scalar — a Pareto comparison vs. HOLA.
 
 **Blind A/B** (human verdict, blinded):
+
 - `tools/benchmark_eeschematic.py` renders HOLA and LLM outputs as PNG
   labelled only "A" and "B" randomly per fixture, mapping stored in a
   separate `_cmp/<fixture>/label.json` the reviewer doesn't open.
@@ -77,6 +79,7 @@ Reported per fixture. No single scalar — a Pareto comparison vs. HOLA.
 - After all 21 fixtures reviewed, labels revealed, win-rate computed.
 
 Merge decision rules:
+
 - LLM wins blind A/B by ≥ 60% AND Pareto-dominates on no fewer than 2
   structural metrics → merge candidate (needs separate v0.3 planning).
 - Otherwise → do not merge, document findings, keep branch as reference.
@@ -197,7 +200,7 @@ Depends on Tasks 2, 3, 5.
        - System prompt = EEschematic's `place_prompt.txt` (verbatim,
          MIT-attributed in docstring).
        - User = netlist + 6 idiom examples (JSON + PNG per Task 4)
-         + current state (JSON + PNG) + "critique and refine, or
+         - current state (JSON + PNG) + "critique and refine, or
          output DONE".
     3. Parse response as JSON. On parse failure, retry once with
        repair prompt; after that raise `PlacerEngineError`.
@@ -228,7 +231,8 @@ Depends on Task 6.
 ### Task 8: `EEschematicPlacer` + CLI integration
 
 - `src/wirewright/placers/eeschematic.py`:
-  ```
+
+  ```text
   class EEschematicPlacer(Placer):
       name = "eeschematic"
       deterministic = False  # amended spec permits this
@@ -236,6 +240,7 @@ Depends on Task 6.
           from wirewright.experiments.eeschematic.agent import place
           return place(s)
   ```
+
 - Register in `placers/__init__.py` always (no env flag). The flag was
   fragile (import-time read, test ordering, monkeypatch friction).
 - Call-time check instead: `EEschematicPlacer.__init__` raises
@@ -247,7 +252,7 @@ Depends on Task 6.
 
 - Integration test from Task 1 passes.
 - Invocation uses `fnox exec --` to inject `OPENAI_API_KEY` from the
-  macOS keychain (see `fnox.toml` and https://fnox.jdx.dev). This keeps
+  macOS keychain (see `fnox.toml` and <https://fnox.jdx.dev>). This keeps
   the key out of shell history, out of the Claude Code transcript, and
   out of any file in the repo. One-time setup: `fnox set OPENAI_API_KEY`
   (or `pbpaste | fnox set OPENAI_API_KEY`). Then:
