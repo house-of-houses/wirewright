@@ -132,6 +132,18 @@ def vision_call(
         except terminal_exc as e:
             raise PlacerEngineError(f"OpenAI terminal error: {e!s}") from e
         except retryable_exc as e:
+            # Billing / quota errors come back as 429 but will NOT resolve
+            # in a few seconds — treat as terminal to avoid pointless retries.
+            if isinstance(e, openai.RateLimitError):
+                payload = str(e).lower()
+                if (
+                    "insufficient_quota" in payload
+                    or "credit_balance_exhausted" in payload
+                    or "billing" in payload
+                ):
+                    raise PlacerEngineError(
+                        f"OpenAI billing/quota error (not retryable): {e!s}"
+                    ) from e
             last_err = e
             if attempt == _MAX_RETRIES - 1:
                 raise PlacerEngineError(

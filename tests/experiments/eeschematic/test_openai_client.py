@@ -118,6 +118,32 @@ def test_rate_limit_then_success(img: Path, monkeypatch: pytest.MonkeyPatch) -> 
     assert result.text == "ok"
 
 
+def test_insufficient_quota_is_terminal_not_retried(
+    img: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """429 with billing-related payload must not consume all retries."""
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "wirewright.experiments.eeschematic.openai_client._BACKOFF_BASE_SECONDS", 0.0
+    )
+    response = MagicMock()
+    response.status_code = 429
+    err = openai.RateLimitError(
+        "Error code: 429 - {'error': {'message': 'No credits remaining', "
+        "'type': 'insufficient_quota', 'code': 'credit_balance_exhausted'}}",
+        response=response,
+        body=None,
+    )
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.side_effect = err
+    with (
+        patch("openai.OpenAI", return_value=mock_client),
+        pytest.raises(PlacerEngineError, match="billing/quota"),
+    ):
+        vision_call(system="s", user_text="u", image_paths=[img])
+    assert mock_client.chat.completions.create.call_count == 1  # no retry
+
+
 def test_content_filter_finish_reason_is_terminal(
     img: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
