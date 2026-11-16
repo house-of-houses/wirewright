@@ -2,6 +2,42 @@
 
 All notable changes to wirewright. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- **Rails no longer short through stacked flag positions.** When VDD /
+  VSS / GND rail flags landed on the same x column, the vertical stub
+  from one rail's pin to its flag passed through another rail's flag
+  position, electrically shorting the two nets. `emit_power_ground_rails`
+  now routes stubs through `routing.orthogonal.route_avoiding(...,
+  pin_obstacles=...)` with other-rail flag positions and other-net pin
+  positions as point obstacles — a colliding straight stub becomes an
+  L-bump-out that clears every obstacle. Recovers 2 of the 4 known-short
+  HOLA fixtures: `tb303-envelope`, `tb303-vco-saw-cliptop`.
+- **`route_avoiding` honors pin obstacles on colinear endpoints.**
+  Previously short-circuited to a straight `Wire(a, b)` for colinear
+  endpoints without checking pin obstacles. Now generates bump-out
+  candidates (±1 grid step aside) when the straight path would cross a
+  pin, picks lowest-score.
+
+### Known issues (reduced)
+
+- Of HOLA's 4 previously-shorted fixtures, 2 remain:
+  `tb303-vco-saw-cliptop-bottom` and `tb303-vco-integrated`. These show
+  different short patterns — signal-net routing through other signal-net
+  pins (not rail collisions). Needs follow-up work in HOLA placement
+  density or signal-net router improvements.
+
+### EEschematic experiment
+
+- Paused pending the two remaining HOLA rail-adjacent shorts. See
+  `docs/notes/eeschematic-verdict.md` and `experiment/eeschematic`
+  branch. With this rails fix, `tb303-vco-saw-cliptop` (one of the two
+  fixtures the experiment was blocked on) now passes the strict oracle,
+  so the experiment could resume on that fixture to confirm the VCoT
+  loop converges on a real transistor circuit.
+
 ## [0.2.0] — 2026-05-03
 
 Quality release. Every TB-303 fixture renders under `--placer hola`

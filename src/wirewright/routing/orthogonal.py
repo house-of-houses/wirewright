@@ -170,10 +170,41 @@ def route_avoiding(
     """
     ax, ay = snap_to_grid(a)
     bx, by = snap_to_grid(b)
-    if ax == bx or ay == by:
-        return [Wire(ax, ay, bx, by)]
 
-    candidates: list[list[tuple[int, int]]] = [
+    # Colinear endpoints: the straight segment is the obvious answer,
+    # but only if no pin obstacle sits on it. Pin shorts take priority
+    # over path simplicity — if a straight stub would short two nets,
+    # add bump-out detour candidates that go one grid step aside.
+    if ax == bx or ay == by:
+        straight = [(ax, ay), (bx, by)]
+        if not pin_obstacles or not any(
+            _point_on_segment_closed(p, (straight[0], straight[1])) for p in pin_obstacles
+        ):
+            return [Wire(ax, ay, bx, by)]
+        # Build bump-out candidates. For a vertical straight (ax == bx),
+        # detour via x ± LTSPICE_GRID. For a horizontal straight, via
+        # y ± LTSPICE_GRID.
+        candidates: list[list[tuple[int, int]]] = []
+        if ax == bx:
+            for dx in (LTSPICE_GRID, -LTSPICE_GRID):
+                candidates.append(
+                    [(ax, ay), (ax + dx, ay), (ax + dx, by), (bx, by)]
+                )
+        else:
+            for dy in (LTSPICE_GRID, -LTSPICE_GRID):
+                candidates.append(
+                    [(ax, ay), (ax, ay + dy), (bx, by + dy), (bx, by)]
+                )
+        best = min(candidates, key=lambda p: _path_score(p, obstacles, pin_obstacles))
+        bump_wires: list[Wire] = []
+        for i in range(len(best) - 1):
+            if best[i] != best[i + 1]:
+                bump_wires.append(
+                    Wire(best[i][0], best[i][1], best[i + 1][0], best[i + 1][1])
+                )
+        return bump_wires
+
+    candidates = [
         [(ax, ay), (bx, ay), (bx, by)],  # HV (horizontal-first L)
         [(ax, ay), (ax, by), (bx, by)],  # VH (vertical-first L)
     ]
