@@ -41,14 +41,22 @@ Return JSON with this structure:
 }
 
 Placement rules:
-1. Identify subcircuits (current mirrors, differential pairs, cascodes).
-2. VDD at top, GND at bottom (as positional guidance only — the host
-   handles power/ground rails separately; you do not need to emit VDD
-   or GND componentInstances).
-3. Keep symmetric subcircuits side by side.
-4. Minimum distance between components: 20 grid units.
-5. Place sources near the components they drive, aligned horizontally.
-6. Keep the schematic compact and readable.
+1. You MUST emit one componentInstance for every ref in the "Components
+   to place" list below — including voltage sources named VDD, VSS,
+   VCC, etc. The host does NOT invent components. If a ref is in the
+   list, place it, even if its name resembles a power rail.
+2. Separately, do NOT invent standalone VDD/GND decoration instances
+   that are not in the ref list — the host renders power/ground rails
+   from net metadata, so free-floating VDD/GND placeholders only clutter
+   the schematic.
+3. Identify subcircuits (current mirrors, differential pairs, cascodes).
+4. Put refs that act as positive supplies near the top and refs that
+   act as negative supplies / ground near the bottom.
+5. Keep symmetric subcircuits side by side.
+6. Minimum distance between components: 20 grid units.
+7. Place current/voltage sources near the components they drive,
+   aligned horizontally.
+8. Keep the schematic compact and readable.
 
 Return ONLY valid JSON. No prose, no code fences, no explanation.
 Output the token "DONE" on its own line after the JSON if you are \

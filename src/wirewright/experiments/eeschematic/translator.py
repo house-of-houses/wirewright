@@ -64,22 +64,21 @@ def _flip_rotation_to_orientation(flip: Any, rotation: Any) -> Orientation:
     return f"M{rot}"  # type: ignore[return-value]
 
 
-def _is_rail_placeholder(name: str, typename: str) -> bool:
-    """VDD and GND componentInstances are rail metadata, not components."""
-    if typename in ("VDD", "GND"):
-        return True
-    n = name.upper()
-    return n == "VDD" or n.startswith("GND") or n == "VSS" or n == "VCC"
-
-
 def eeschematic_json_to_ir(unplaced: Schematic, data: dict[str, Any]) -> Schematic:
     """Apply EEschematic placement JSON onto a copy of ``unplaced``.
 
-    Components whose ``ref`` is absent from ``data["componentInstances"]``
-    stay unplaced; downstream validation surfaces them.
+    Ref-match only: if ``instance.name`` equals a wirewright component's
+    ``ref``, that component is placed. Instances whose ``name`` matches
+    no component are silently ignored — they are the EEschematic
+    convention's standalone VDD/GND decorations, which wirewright does
+    not use.
 
-    Instances whose ``name`` matches no component are silently ignored
-    (likely VDD/GND placeholders handled by rails).
+    Historical note: an earlier version of this translator short-circuited
+    anything typed ``VDD`` or ``GND`` as "rail decoration" before the
+    ref lookup. That silently skipped real voltage-source components
+    whose user-given ``ref`` happened to be ``VDD`` or ``VSS`` (common
+    in bipolar fixtures) — see the 2026-11-16 ``tb303-vco-saw-cliptop``
+    run that failed on every iter with "'VDD' is not placed".
     """
     out = copy.deepcopy(unplaced)
     by_ref = {c.ref: c for c in out.components}
@@ -89,8 +88,7 @@ def eeschematic_json_to_ir(unplaced: Schematic, data: dict[str, Any]) -> Schemat
         if not isinstance(inst, dict):
             continue
         name = str(inst.get("name") or "")
-        typename = str(inst.get("typeName") or "")
-        if not name or _is_rail_placeholder(name, typename):
+        if not name:
             continue
         comp = by_ref.get(name)
         if comp is None:

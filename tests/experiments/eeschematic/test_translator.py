@@ -68,6 +68,48 @@ def test_translate_ignores_vdd_gnd_placeholders() -> None:
     assert refs == {"R1", "R2"}  # no VDD/GND created
 
 
+def test_translate_places_real_vdd_voltage_source() -> None:
+    """Regression for 2026-11-16: a wirewright voltage source whose user-
+    given ref is 'VDD' (common in bipolar fixtures) must be placed when
+    the model emits an instance with that name — the translator must
+    NOT skip it as a rail placeholder.
+    """
+    s = Schematic(
+        components=[
+            Component(
+                ref="VDD",
+                symbol="voltage",
+                value="DC 12",
+                pins={"+": "VDD", "-": "0"},
+            ),
+            Component(ref="R1", symbol="res", value="1k", pins={"1": "VDD", "2": "0"}),
+        ],
+        nets=[Net("VDD", is_power=True), Net("0", is_ground=True)],
+    )
+    data = {
+        "componentInstances": [
+            {
+                "typeName": "voltage",
+                "name": "VDD",
+                "origin": {"x": -4, "y": 4},
+                "rotation": "0",
+                "flip": "none",
+            },
+            {
+                "name": "R1",
+                "origin": {"x": 0, "y": 0},
+                "rotation": "0",
+                "flip": "none",
+            },
+        ]
+    }
+    out = eeschematic_json_to_ir(s, data)
+    vdd = next(c for c in out.components if c.ref == "VDD")
+    assert vdd.is_placed, "component with ref='VDD' must be placed, not skipped"
+    assert vdd.x == -4 * EE_UNIT_IN_IR
+    assert vdd.y == -4 * EE_UNIT_IN_IR  # Y flipped
+
+
 def test_translate_preserves_input_and_leaves_missing_unplaced() -> None:
     s = _two_res()
     data = {
