@@ -35,6 +35,12 @@ class EEschematicPlacer(Placer):
                 "This placer is an experimental side branch — see "
                 "docs/plans/eeschematic-experiment.md."
             )
+        # Tunables via env for easy iteration without code changes.
+        # T10 benchmark will set WIREWRIGHT_LLM_MAX_ITERS=5 on transistor
+        # fixtures where one critique round isn't enough.
+        self._max_iters = int(os.environ.get("WIREWRIGHT_LLM_MAX_ITERS", "3"))
+        self._budget_usd = float(os.environ.get("WIREWRIGHT_LLM_BUDGET_USD", "20"))
+        self._model = os.environ.get("WIREWRIGHT_LLM_MODEL", "gpt-5")
 
     def place(
         self,
@@ -46,4 +52,10 @@ class EEschematicPlacer(Placer):
         from wirewright.experiments.eeschematic.agent import place as _place
 
         del hints  # not used in v0.3-experiment
-        return _place(schematic, rails=self.rails)
+        return _place(
+            schematic,
+            rails=self.rails,
+            max_iters=self._max_iters,
+            budget_usd=self._budget_usd,
+            model=self._model,
+        )

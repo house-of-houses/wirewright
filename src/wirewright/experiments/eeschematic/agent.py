@@ -70,17 +70,20 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 
 def _netlist_text(sch: Schematic) -> str:
-    """Best-effort netlist re-emission for the prompt.
+    """Pin-safe netlist re-emission for the prompt.
 
-    The parser doesn't retain the original text, so reconstruct a
-    SPICE-like listing from the IR. Good enough for the model.
+    The parser doesn't retain original SPICE text and ``sorted(pins)``
+    gives the wrong order for multi-pin devices (e.g. ``npn`` would come
+    out B/C/E, not SPICE's C/B/E). Emit explicit ``pin=net`` pairs so
+    the model can't be misled by positional ambiguity. Format:
+
+        <ref>:<symbol>  <pin>=<net>  <pin>=<net>  ...  [value]
     """
     lines = []
     for c in sch.components:
-        pin_order = sorted(c.pins.keys())
-        pins = " ".join(c.pins[p] for p in pin_order)
-        extra = f" {c.value}" if c.value else ""
-        lines.append(f"{c.ref} {pins}{extra}")
+        pairs = "  ".join(f"{pn}={nn}" for pn, nn in c.pins.items())
+        extra = f"  [{c.value}]" if c.value else ""
+        lines.append(f"{c.ref}:{c.symbol}  {pairs}{extra}")
     return "\n".join(lines)
 
 
@@ -106,9 +109,20 @@ def place(
     if not sch.components:
         return sch
 
-    workdir = Path(workdir) if workdir else Path("_cmp/_scratch")
+    # Per-fixture workdir keeps calls.jsonl, response text, and iter
+    # PNGs from different runs separated. Default directory uses the
+    # schematic's title or a stable hash so repeat runs land cleanly.
+    if workdir is None:
+        stem = sch.title or f"anon-{abs(hash(tuple(c.ref for c in sch.components))) % 10_000}"
+        workdir = Path("_cmp") / stem
+    else:
+        workdir = Path(workdir)
     workdir.mkdir(parents=True, exist_ok=True)
+    # Fresh calls.jsonl per run — otherwise cost accounting mixes stale
+    # entries from previous invocations.
     log_path = workdir / "calls.jsonl"
+    if log_path.exists():
+        log_path.unlink()
 
     netlist = _netlist_text(sch)
     ref_syms = format_ref_symbol_list(sch)
