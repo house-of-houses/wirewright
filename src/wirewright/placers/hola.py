@@ -231,25 +231,40 @@ class HolaPlacer(Placer):
                 (c.x + geo.bbox[0], c.y + geo.bbox[1], c.x + geo.bbox[2], c.y + geo.bbox[3])
             )
 
+        # Precompute pin positions grouped by net so the router can avoid
+        # pins of OTHER nets as point obstacles (otherwise an L-bend
+        # corner can short two nets at a shared coordinate).
+        pins_by_net: dict[str, list[tuple[int, int]]] = {}
+        for c in out.components:
+            assert c.x is not None and c.y is not None
+            for pin_name, pn in c.pins.items():
+                pins_by_net.setdefault(pn, []).append(
+                    absolute_pin_position((c.x, c.y), c.symbol, pin_name, c.orientation)
+                )
+
         # Synthesize wires: pick the L-bend orientation that crosses the
         # fewest other component bodies. Skip self-loops.
         out.wires = []
         for net_name in net_to_refs:
-            pin_positions: list[tuple[int, int]] = []
-            for c in out.components:
-                for pin_name, pn in c.pins.items():
-                    if pn == net_name:
-                        assert c.x is not None and c.y is not None
-                        pin_positions.append(
-                            absolute_pin_position((c.x, c.y), c.symbol, pin_name, c.orientation)
-                        )
+            pin_positions = pins_by_net.get(net_name, [])
             if len({p for p in pin_positions}) < 2:
                 continue
+            other_pins: list[tuple[int, int]] = []
+            for other_net, pins in pins_by_net.items():
+                if other_net != net_name:
+                    other_pins.extend(pins)
             wire_anchor = pin_positions[0]
             for wire_target in pin_positions[1:]:
                 if wire_target == wire_anchor:
                     continue
-                out.wires.extend(route_avoiding(wire_anchor, wire_target, obstacles))
+                out.wires.extend(
+                    route_avoiding(
+                        wire_anchor,
+                        wire_target,
+                        obstacles,
+                        pin_obstacles=other_pins,
+                    )
+                )
 
         # Power/ground rails (clustered by default; see RailMode docstring).
         out.flags = []

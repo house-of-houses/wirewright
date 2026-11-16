@@ -101,31 +101,72 @@ def l_shape_avoiding(
     return [Wire(s[0][0], s[0][1], s[1][0], s[1][1]) for s in chosen]
 
 
+def _point_on_segment_closed(
+    point: tuple[int, int],
+    seg: tuple[tuple[int, int], tuple[int, int]],
+) -> bool:
+    """True if ``point`` lies anywhere on the closed axis-aligned segment."""
+    px, py = point
+    (x1, y1), (x2, y2) = seg
+    if x1 == x2:
+        if px != x1:
+            return False
+        return min(y1, y2) <= py <= max(y1, y2)
+    if py != y1:
+        return False
+    return min(x1, x2) <= px <= max(x1, x2)
+
+
+def _pin_hits(
+    seg: tuple[tuple[int, int], tuple[int, int]],
+    pin_obstacles: list[tuple[int, int]],
+) -> int:
+    """Count pin obstacles whose position lies on the segment."""
+    return sum(1 for p in pin_obstacles if _point_on_segment_closed(p, seg))
+
+
 def _path_score(
     path: list[tuple[int, int]],
     obstacles: list[tuple[int, int, int, int]],
-) -> tuple[int, int]:
-    """Score a path: ``(crossings, total_length)``. Lower is better."""
-    crossings = 0
+    pin_obstacles: list[tuple[int, int]] | None = None,
+) -> tuple[int, int, int]:
+    """Score ``(pin_hits, bbox_crossings, total_length)``. Lower is better.
+
+    A pin hit is any wire segment that passes through a pin position on
+    a different net — causes an electrical short in LTspice. Weighted
+    strictly above bbox crossings so the min() always prefers a short-
+    free path, then a bbox-free path, then the shortest.
+    """
+    bbox_crossings = 0
+    pins = 0
     length = 0
+    pin_obstacles = pin_obstacles or []
     for i in range(len(path) - 1):
-        crossings += _segment_crossings((path[i], path[i + 1]), obstacles)
+        seg = (path[i], path[i + 1])
+        bbox_crossings += _segment_crossings(seg, obstacles)
+        pins += _pin_hits(seg, pin_obstacles)
         length += abs(path[i + 1][0] - path[i][0]) + abs(path[i + 1][1] - path[i][1])
-    return crossings, length
+    return pins, bbox_crossings, length
 
 
 def route_avoiding(
     a: tuple[int, int],
     b: tuple[int, int],
     obstacles: list[tuple[int, int, int, int]],
+    pin_obstacles: list[tuple[int, int]] | None = None,
 ) -> list[Wire]:
-    """Manhattan-route ``a`` to ``b`` avoiding obstacle bboxes.
+    """Manhattan-route ``a`` to ``b`` avoiding obstacle bboxes and pin shorts.
 
     Tries L-shape (2 options); if both cross obstacles, also tries 4
     Z-shape detours that route around the obstacle-bbox extremes (above,
     below, left of, right of *all* obstacles). Picks the path with
-    minimum ``(crossings, total_length)``. Empty obstacle list reduces to
-    standard L-shape with HV preference.
+    minimum ``(pin_hits, bbox_crossings, total_length)``. Empty obstacle
+    list reduces to standard L-shape with HV preference.
+
+    ``pin_obstacles`` are pin positions of OTHER nets. A segment passing
+    through such a pin (at corner or interior) would short two nets in
+    LTspice. The caller must exclude ``a`` and ``b`` themselves — they
+    are pins of the net being routed and are the legitimate endpoints.
     """
     ax, ay = snap_to_grid(a)
     bx, by = snap_to_grid(b)
@@ -137,12 +178,18 @@ def route_avoiding(
         [(ax, ay), (ax, by), (bx, by)],  # VH (vertical-first L)
     ]
 
-    if obstacles:
+    # Any avoidance target (bbox or pin) triggers Z-detour candidates.
+    # Pin obstacles are included in the extreme calculation as 0-size
+    # bboxes so detour lanes clear them too.
+    if obstacles or pin_obstacles:
         margin = LTSPICE_GRID
-        all_x_min = min(o[0] for o in obstacles) - margin
-        all_y_min = min(o[1] for o in obstacles) - margin
-        all_x_max = max(o[2] for o in obstacles) + margin
-        all_y_max = max(o[3] for o in obstacles) + margin
+        all_bboxes: list[tuple[int, int, int, int]] = list(obstacles)
+        if pin_obstacles:
+            all_bboxes.extend((p[0], p[1], p[0], p[1]) for p in pin_obstacles)
+        all_x_min = min(o[0] for o in all_bboxes) - margin
+        all_y_min = min(o[1] for o in all_bboxes) - margin
+        all_x_max = max(o[2] for o in all_bboxes) + margin
+        all_y_max = max(o[3] for o in all_bboxes) + margin
         top_y = snap_to_grid((0, all_y_min))[1]
         bot_y = snap_to_grid((0, all_y_max))[1]
         left_x = snap_to_grid((all_x_min, 0))[0]
@@ -157,7 +204,7 @@ def route_avoiding(
         # Z-right
         candidates.append([(ax, ay), (right_x, ay), (right_x, by), (bx, by)])
 
-    best = min(candidates, key=lambda p: _path_score(p, obstacles))
+    best = min(candidates, key=lambda p: _path_score(p, obstacles, pin_obstacles))
 
     wires: list[Wire] = []
     for i in range(len(best) - 1):
