@@ -33,12 +33,12 @@ when it was paused. All lint + types clean.
   R1+R2 stacked right, long clean wires)
 - Not as compact as HOLA's triangle layout, but electrically correct
 
-### `tb303-vco-saw-cliptop` — blocked by wirewright rails bug
+### `tb303-vco-saw-cliptop` — blocked by signal-net router limits
 
 14-component fixture with one PNP transistor, VDD+VSS supplies, a
 voltage-controlled switch, and an op-amp subcircuit.
 
-Two bugs surfaced, in order:
+Three bugs surfaced, in order:
 
 1. **Translator silently skipped real VDD/VSS components** (fixed in
    commit `ffd7e78`). An earlier version of `eeschematic_json_to_ir`
@@ -49,14 +49,26 @@ Two bugs surfaced, in order:
    `test_translate_places_real_vdd_voltage_source`.
 
 2. **`emit_power_ground_rails` shorts stacked rails on shared x columns**
-   (NOT fixed; the actual blocker). When the model places VDD and VSS
-   at the same x, three rail flags stack vertically:
+   (fixed on master in commit `d6758c8`). When the model places VDD
+   and VSS at the same x, three rail flags stacked vertically:
    `VSS@(x, -912)`, `VDD@(x, -848)`, `GND@(x, 992)`. The vertical wire
-   from a VDD pin up to its rail then passes through the VSS rail's
-   position (same x, in-between y), and the component's own V- pin —
-   which is on net `'0'` — connects to the ground rail via a long wire
-   on the same column. Result: VDD, VSS, and `'0'` fuse into one
-   electrical class.
+   from a VDD pin up to its rail passed through the VSS rail's
+   position. Fixed by pre-planning all rail-flag positions and routing
+   stubs via `route_avoiding(..., pin_obstacles=...)` with other-rail
+   flags as point obstacles. Recovered 2 of 4 HOLA-shorted fixtures
+   including this one — HOLA now ships clean output here.
+
+3. **Signal-net router can't find short-free paths on dense placements**
+   (NOT fixed; the actual remaining blocker). After the rails fix, the
+   LLM run on this fixture still shorts — but now on signal nets
+   (RAMP ↔ TRIG), not rails. The LLM places Q_CLAMP's emitter (RAMP)
+   and collector (TRIG) in positions where `route_avoiding`'s candidate
+   set (2 L + 4 Z around obstacle extremes) can't find a corner that
+   doesn't land on another net's pin. Same bug class as HOLA's remaining
+   2 broken fixtures (`-cliptop-bottom`, `-vco-integrated`). Needs a
+   stronger router with more candidate paths (jogs, multi-segment
+   detours) OR placement-density changes that keep pin configurations
+   routable.
 
 ### VCoT loop verdict
 
@@ -120,14 +132,20 @@ three side-effect improvements above already landed on master.
 
 ## Next steps
 
-1. **`fix/rails-collision` on master** — make
-   `emit_power_ground_rails` detect rail-column collisions and offset
-   VDD / VSS / GND columns horizontally so stacked rail wires can't
-   share a pin column. Fixes HOLA's 4 broken fixtures too. Estimated
-   one focused session.
-2. **After rails fix lands**: rebase `experiment/eeschematic` on new
-   master, re-run `tb303-vco-saw-cliptop` to confirm the loop converges.
-   If yes, run T10 full-corpus benchmark and record a real verdict.
-3. **If T10 shows win**: Phase 4 pattern work pivots to MLLM-driven
+1. ~~**`fix/rails-collision` on master**~~ — DONE in commit `d6758c8`.
+   Recovered `tb303-envelope` and `tb303-vco-saw-cliptop` from the
+   known-shorts list.
+2. **Signal-net router improvements** — the real remaining blocker.
+   Needed for BOTH:
+   - HOLA's last 2 broken fixtures (`-cliptop-bottom`, `-vco-integrated`)
+   - The EEschematic experiment on any non-trivial fixture
+   Options: (a) add jog / multi-segment candidates to `route_avoiding`
+   beyond the current 2 L + 4 Z set; (b) implement a proper grid-based
+   A\* router for the obstacle-dense case; (c) teach placers to leave
+   more routing slack around dense pin clusters.
+3. **After router work lands**: rebase `experiment/eeschematic` on new
+   master, re-run `tb303-vco-saw-cliptop` to confirm. If yes, run T10
+   full-corpus benchmark.
+4. **If T10 shows win**: Phase 4 pattern work pivots to MLLM-driven
    placement. If it shows loss: delete the branch and document the
    verdict in `CHANGELOG.md` under v0.3.
