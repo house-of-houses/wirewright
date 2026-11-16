@@ -51,8 +51,13 @@ def test_extract_json_raises_on_no_json() -> None:
         _extract_json("no json here at all")
 
 
-def test_place_single_iter_done(tmp_path: Path) -> None:
-    """One successful call returning DONE short-circuits the loop."""
+def test_place_done_honored_only_after_iter_zero(tmp_path: Path) -> None:
+    """DONE on iter 0 is ignored — model hasn't seen a render yet.
+
+    Advisor rule (2026-11-02): the model's "nothing to improve" claim is
+    not grounded until it has critiqued at least one rendered placement.
+    Force at least one VCoT round before DONE short-circuits the loop.
+    """
     sch = _two_res()
     good_json = {
         "componentInstances": [
@@ -67,9 +72,13 @@ def test_place_single_iter_done(tmp_path: Path) -> None:
         return_value=_fake(response),
     ) as mock:
         out = place(sch, max_iters=3, workdir=tmp_path)
-    assert mock.call_count == 1
+    # Iter 0 ignores DONE; iter 1 critiques the render and honors DONE.
+    assert mock.call_count == 2
     placed_refs = {c.ref for c in out.components if c.is_placed}
     assert placed_refs == {"V1", "R1", "R2"}
+    # Response text is persisted alongside each iter's PNG.
+    assert (tmp_path / "iter_00.response.txt").exists()
+    assert (tmp_path / "iter_01.response.txt").exists()
 
 
 def test_place_budget_cap(tmp_path: Path) -> None:

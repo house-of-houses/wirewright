@@ -84,8 +84,14 @@ def vision_call(
     image_paths: list[Path],
     model: str = "gpt-5",
     log_path: Path | None = None,
+    reasoning_effort: str | None = "low",
 ) -> CallResult:
     """One MLLM call with text + attached PNG images.
+
+    ``reasoning_effort`` controls GPT-5 internal reasoning depth: ``"low"``
+    for placement (cheap, fast), ``"medium"`` or ``"high"`` for harder
+    tasks. ``None`` omits the parameter. Forwarded via ``extra_body``
+    so older SDK versions and non-reasoning models tolerate it.
 
     Raises :class:`PlacerEngineError` on any API failure after retries.
     """
@@ -125,10 +131,14 @@ def vision_call(
         openai.UnprocessableEntityError,
     )
 
+    create_kwargs: dict[str, Any] = {"model": model, "messages": messages}
+    if reasoning_effort is not None:
+        create_kwargs["extra_body"] = {"reasoning_effort": reasoning_effort}
+
     last_err: Exception | None = None
     for attempt in range(_MAX_RETRIES):
         try:
-            response = client.chat.completions.create(model=model, messages=messages)
+            response = client.chat.completions.create(**create_kwargs)
         except terminal_exc as e:
             raise PlacerEngineError(f"OpenAI terminal error: {e!s}") from e
         except retryable_exc as e:

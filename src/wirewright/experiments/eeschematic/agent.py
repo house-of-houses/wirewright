@@ -93,6 +93,11 @@ def place(
     model: str = "gpt-5",
     workdir: Path | None = None,
 ) -> Schematic:
+    # Under advisor-forced iter-0 critique rule we need at least 2
+    # iterations: iter 0 proposes, iter 1 critiques the render. Below
+    # that we can't run VCoT at all.
+    if max_iters < 2:
+        max_iters = 2
     """Run the VCoT placement loop and return a placed Schematic.
 
     ``workdir`` holds per-iteration PNG renders and ``calls.jsonl``.
@@ -113,6 +118,7 @@ def place(
     current_json: dict[str, Any] | None = None
     current_placed: Schematic | None = None
     best_valid: Schematic | None = None
+    last_errors: list[str] = []
 
     for i in range(max_iters):
         if i == 0 or current_placed is None:
@@ -125,10 +131,22 @@ def place(
         else:
             img = workdir / f"iter_{i:02d}.png"
             render_schematic_png(current_placed, img)
-            user_text = PLACE_USER_CRITIQUE.format(
+            critique = PLACE_USER_CRITIQUE.format(
                 netlist=netlist,
                 current_json=json.dumps(current_json, indent=2),
             )
+            if last_errors:
+                # Feed structural findings as text — model can't be
+                # relied on to read pixels for shorts; naming them
+                # explicitly steers the next placement.
+                critique += "\n\nValidation findings from your last placement:\n"
+                critique += "\n".join(f"  - {e}" for e in last_errors)
+                critique += (
+                    "\n\nAddress these before emitting DONE. If placement "
+                    "looks good and no findings remain, append DONE on its "
+                    "own line."
+                )
+            user_text = critique
             image_paths = [img]
 
         result = vision_call(
@@ -147,6 +165,9 @@ def place(
             result.finish_reason,
             len(result.text),
         )
+        # Save full response text alongside the iteration PNG so the
+        # user (and advisor) can see what the model actually emitted.
+        (workdir / f"iter_{i:02d}.response.txt").write_text(result.text)
         if accumulated_cost > budget_usd:
             raise PlacerEngineError(
                 f"EEschematic budget ${budget_usd:.2f} exceeded "
@@ -157,15 +178,18 @@ def place(
             parsed = _extract_json(result.text)
         except ValueError as e:
             logger.warning("iter %d: json parse failed: %s", i, e)
+            last_errors = [f"JSON parse failed: {e!s}"]
             continue
 
         current_json = parsed
+        last_errors = []
         try:
             placed = eeschematic_json_to_ir(sch, parsed)
             wired = wire_placed_schematic(placed, rails=rails)
             validate_placed(wired)
         except Exception as e:
             logger.warning("iter %d: translate/wire/validate failed: %s", i, e)
+            last_errors = [f"{type(e).__name__}: {e!s}"]
             current_placed = (
                 eeschematic_json_to_ir(sch, parsed) if parsed else current_placed
             )
@@ -173,7 +197,11 @@ def place(
 
         current_placed = wired
         best_valid = wired
-        if re.search(r"\bDONE\b", result.text):
+        # Honor DONE only after iter 0 — the model has not yet seen a
+        # render of its own placement on iter 0, so its claim of
+        # "nothing to improve" is not grounded. Force at least one
+        # Visual Chain-of-Thought round.
+        if i > 0 and re.search(r"\bDONE\b", result.text):
             logger.info("iter %d: DONE sigil, returning", i)
             break
 
