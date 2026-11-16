@@ -4,39 +4,60 @@ All notable changes to wirewright. Format follows [Keep a Changelog](https://kee
 
 ## [Unreleased]
 
+### Added
+
+- **Wire-connectivity oracle** —
+  `ir.validate.check_wires_induce_exact_nets(sch, strict=False)` catches
+  wire-induced net shorts via union-find over pin positions + wire
+  endpoints + wire-interior crossings. `validate_placed` calls it with
+  `strict=False` (logs `WARNING`). Strict callers raise
+  `ValidationError`. See invariant 9 in `docs/specs/ir.md`.
+- **Pin-aware routing** —
+  `routing.orthogonal.route_avoiding(..., pin_obstacles=...)` penalizes
+  paths whose corners or segment interiors land on other-net pins.
+  Score tuple is `(pin_hits, bbox_crossings, total_length)`. Z-detour
+  candidates now trigger on pin obstacles alone. Both `HolaPlacer` and
+  `NaivePlacer` wire this up.
+
 ### Fixed
 
 - **Rails no longer short through stacked flag positions.** When VDD /
   VSS / GND rail flags landed on the same x column, the vertical stub
   from one rail's pin to its flag passed through another rail's flag
   position, electrically shorting the two nets. `emit_power_ground_rails`
-  now routes stubs through `routing.orthogonal.route_avoiding(...,
-  pin_obstacles=...)` with other-rail flag positions and other-net pin
-  positions as point obstacles — a colliding straight stub becomes an
-  L-bump-out that clears every obstacle. Recovers 2 of the 4 known-short
-  HOLA fixtures: `tb303-envelope`, `tb303-vco-saw-cliptop`.
+  now routes stubs through `route_avoiding(..., pin_obstacles=...)`
+  with other-rail flag positions and other-net pin positions as point
+  obstacles — a colliding straight stub becomes an L-bump-out that
+  clears every obstacle. Recovers 2 of the 4 known-short HOLA fixtures:
+  `tb303-envelope`, `tb303-vco-saw-cliptop`.
 - **`route_avoiding` honors pin obstacles on colinear endpoints.**
   Previously short-circuited to a straight `Wire(a, b)` for colinear
   endpoints without checking pin obstacles. Now generates bump-out
   candidates (±1 grid step aside) when the straight path would cross a
   pin, picks lowest-score.
 
-### Known issues (reduced)
+### Known issues
 
-- Of HOLA's 4 previously-shorted fixtures, 2 remain:
+- Of HOLA's 4 previously-shorted fixtures, **2 remain**:
   `tb303-vco-saw-cliptop-bottom` and `tb303-vco-integrated`. These show
-  different short patterns — signal-net routing through other signal-net
-  pins (not rail collisions). Needs follow-up work in HOLA placement
-  density or signal-net router improvements.
+  a different short pattern — signal-net routing through other
+  signal-net pins, not rail collisions. The HOLA signal-net router
+  passes `pin_obstacles` to `route_avoiding`, but `route_avoiding`'s
+  current candidate set (2 L + 4 Z around obstacle extremes) can't
+  always find a short-free path on dense placements. Needs HOLA
+  placement-density work and/or a stronger router.
 
-### EEschematic experiment
+### EEschematic experiment — paused
 
-- Paused pending the two remaining HOLA rail-adjacent shorts. See
-  `docs/notes/eeschematic-verdict.md` and `experiment/eeschematic`
-  branch. With this rails fix, `tb303-vco-saw-cliptop` (one of the two
-  fixtures the experiment was blocked on) now passes the strict oracle,
-  so the experiment could resume on that fixture to confirm the VCoT
-  loop converges on a real transistor circuit.
+- Side experiment on `experiment/eeschematic` branch — MLLM-based
+  placer using GPT-5 vision. Divider plumbing passes end-to-end. After
+  the rails fix above, `tb303-vco-saw-cliptop` was retried: the LLM
+  placement itself is clean, but the experiment's strict wiring still
+  fails on signal-net shorts (RAMP ↔ TRIG) — same router-candidate
+  limitation that blocks HOLA's remaining 2 fixtures. Both are gated on
+  the same follow-up routing work. See
+  `docs/notes/eeschematic-verdict.md`. Branch retained as reference;
+  not merged.
 
 ## [0.2.0] — 2026-05-03
 

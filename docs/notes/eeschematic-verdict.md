@@ -1,0 +1,133 @@
+# EEschematic experiment verdict
+
+**Status**: paused pending wirewright rails fix. Branch
+`experiment/eeschematic` retained as a reference artifact.
+**Decision date**: 2026-11-16.
+**Decision author**: Gert (with Claude Code assistance).
+**Plan**: [`docs/plans/eeschematic-experiment.md`](../plans/eeschematic-experiment.md).
+
+## Question the experiment set out to answer
+
+> Does an MLLM placer with a 6-idiom few-shot library beat HOLA on a
+> pre-defined readability metric for wirewright's analog corpus?
+
+## What got built
+
+T1–T6, T8 shipped on `experiment/eeschematic`. T4 (idiom library) and
+T7 (wiring VCoT loop) deferred per advisor after the harness revealed
+they weren't on the critical path to a signal. T9 (divider prove-out)
+passed. T10 (full-corpus benchmark) blocked by the rails finding below.
+
+Branch state: 14 commits ahead of master, 222 tests + 1 live-skipped
+when it was paused. All lint + types clean.
+
+## What the runs showed
+
+### Divider — passed (2026-11-02, re-verified 2026-11-16)
+
+- 2 API calls, $0.02 total under `reasoning_effort="low"`
+- VCoT loop engaged: iter 0 produced a valid-but-ugly mixed-orientation
+  layout, iter 1 saw the render and emitted all-R0 placement
+- `check_wires_induce_exact_nets(strict=True)` passed
+- Output visually readable, textbook-series style (V1 left,
+  R1+R2 stacked right, long clean wires)
+- Not as compact as HOLA's triangle layout, but electrically correct
+
+### `tb303-vco-saw-cliptop` — blocked by wirewright rails bug
+
+14-component fixture with one PNP transistor, VDD+VSS supplies, a
+voltage-controlled switch, and an op-amp subcircuit.
+
+Two bugs surfaced, in order:
+
+1. **Translator silently skipped real VDD/VSS components** (fixed in
+   commit `ffd7e78`). An earlier version of `eeschematic_json_to_ir`
+   had a `_is_rail_placeholder` shortcut that skipped anything named
+   VDD/VSS/GND, under the assumption those were EEschematic's standalone
+   decoration instances. But wirewright's SPICE parser creates REAL
+   voltage-source components with those refs. Regression test at
+   `test_translate_places_real_vdd_voltage_source`.
+
+2. **`emit_power_ground_rails` shorts stacked rails on shared x columns**
+   (NOT fixed; the actual blocker). When the model places VDD and VSS
+   at the same x, three rail flags stack vertically:
+   `VSS@(x, -912)`, `VDD@(x, -848)`, `GND@(x, 992)`. The vertical wire
+   from a VDD pin up to its rail then passes through the VSS rail's
+   position (same x, in-between y), and the component's own V- pin —
+   which is on net `'0'` — connects to the ground rail via a long wire
+   on the same column. Result: VDD, VSS, and `'0'` fuse into one
+   electrical class.
+
+### VCoT loop verdict
+
+The loop *works*. On the catastrophic iter-0 output (all 6 nets
+fused), iter 1 improved to just the 3-way rail short — the model fixed
+the signal-net shorts based on the structural findings fed as text in
+the critique prompt. Iters 2 and 3 then ping-ponged because the
+remaining short isn't the model's fault — rails are added by wirewright
+after placement, so the model can't route around them.
+
+Total experiment spend: $0.21.
+
+## Finding — HOLA has the same rails bug on 4 of 21 fixtures
+
+Discovered as a side-effect of landing the wire-connectivity oracle on
+master (warn-only mode). HOLA silently ships shorted schematics on:
+
+- `medium/tb303-envelope.net`
+- `medium/tb303-vco-saw-cliptop.net`
+- `medium/tb303-vco-saw-cliptop-bottom.net`
+- `hard/tb303-vco-integrated.net`
+
+`validate_placed` logs a warning on each render. The LLM experiment's
+strict check surfaces the same bug as a hard error. See invariant 9 in
+[`docs/specs/ir.md`](../specs/ir.md).
+
+## Side-effects that landed on master
+
+Three master-worthy improvements composed as a side-effect of the
+experiment:
+
+- **Wire-connectivity oracle** —
+  `ir.validate.check_wires_induce_exact_nets(sch, strict=False)`.
+  Union-find over pin positions + wire endpoints + wire-interior
+  crossings. `validate_placed` logs warnings; strict callers raise.
+  Catches pin-coincident L-bend corners and rail-wire-through-pin shorts
+  that `validate_placed` previously missed.
+- **Pin-aware routing** —
+  `routing.orthogonal.route_avoiding(..., pin_obstacles=...)`. Pin
+  positions of other nets score as path-preference penalties (strictly
+  above bbox crossings). Z-detour candidates now trigger on pin
+  obstacles alone, not just bbox obstacles. HOLA and `NaivePlacer` both
+  pass other-net pins now.
+- **Invariant 9 in `docs/specs/ir.md`** — documents the no-shorts
+  invariant with the warn/strict split.
+
+## Verdict
+
+The experiment answered its question partially:
+
+- **For single-rail circuits (divider)**: the MLLM approach is viable.
+  Output is electrically correct, visually readable, costs pennies, and
+  the VCoT loop self-corrects on obvious problems.
+- **For multi-rail circuits (every real TB-303 fixture)**: the approach
+  is blocked by a pre-existing wirewright rails bug, not by model
+  capability. The model cannot route around rails it does not control.
+
+**No merge to master.** The experiment branch is retained as a
+reference artifact for revisiting after the rails bug is fixed. The
+three side-effect improvements above already landed on master.
+
+## Next steps
+
+1. **`fix/rails-collision` on master** — make
+   `emit_power_ground_rails` detect rail-column collisions and offset
+   VDD / VSS / GND columns horizontally so stacked rail wires can't
+   share a pin column. Fixes HOLA's 4 broken fixtures too. Estimated
+   one focused session.
+2. **After rails fix lands**: rebase `experiment/eeschematic` on new
+   master, re-run `tb303-vco-saw-cliptop` to confirm the loop converges.
+   If yes, run T10 full-corpus benchmark and record a real verdict.
+3. **If T10 shows win**: Phase 4 pattern work pivots to MLLM-driven
+   placement. If it shows loss: delete the branch and document the
+   verdict in `CHANGELOG.md` under v0.3.
