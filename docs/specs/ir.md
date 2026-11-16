@@ -103,6 +103,21 @@ These are enforced by `ir.validate.validate(schematic)`:
 6. After placement, no two component bounding boxes overlap.
 7. Pin absolute positions are guaranteed to lie on the grid by construction: invariant 5 (component on grid) plus the registration-time assertion in `wirewright.symbols.builtin._assert_pin_offsets_grid_aligned` that every registered pin offset is a multiple of `LTSPICE_GRID`. Not separately checked at runtime in `validate_placed`.
 8. The net `"0"` (and any net with `is_ground=True`) is always treated as ground.
+9. After placement, no wire should short two different nets. Two pins of
+   different nets must not share a union-find class reached via wire
+   endpoints and wire-interior crossings. Checked by
+   `ir.validate.check_wires_induce_exact_nets`. `validate_placed` calls it
+   with `strict=False` and logs any short as a `WARNING` — HOLA has
+   latent shorts on multiple fixtures that pre-date this check, and
+   failing hard would break the v0.2.0 pipeline. The EEschematic
+   experiment (and other callers that need correctness guarantees) call
+   the function with `strict=True`, raising `ValidationError` on the
+   first short. Ground and power nets are exempt from the completeness
+   side (their pins are tied by FLAGs via rails, not wires), but any
+   wire that touches a ground/power pin while carrying a different
+   net's signal still counts as a short. Routers must treat pins of
+   other nets as point obstacles when picking L-bend corners — see
+   `routing.orthogonal.route_avoiding(..., pin_obstacles=...)`.
 
 ## What the IR does not capture (yet)
 

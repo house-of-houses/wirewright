@@ -79,11 +79,11 @@ def test_route_avoiding_beats_plain_l_shape_when_hv_is_blocked() -> None:
 
     avoiding = route_avoiding(a, b, obstacles)
     avoiding_pts = [(avoiding[0].x1, avoiding[0].y1)] + [(w.x2, w.y2) for w in avoiding]
-    avoiding_crossings, _ = _path_score(avoiding_pts, obstacles)
+    _, avoiding_crossings, _ = _path_score(avoiding_pts, obstacles)
 
     l_only = l_shape(a, b)
     l_pts = [(l_only[0].x1, l_only[0].y1)] + [(w.x2, w.y2) for w in l_only]
-    l_crossings, _ = _path_score(l_pts, obstacles)
+    _, l_crossings, _ = _path_score(l_pts, obstacles)
 
     assert avoiding_crossings < l_crossings
 
@@ -95,5 +95,5 @@ def test_route_avoiding_picks_zero_crossing_path_when_available() -> None:
     obstacles = [(48, -16, 112, 16)]  # blocks HV's horizontal segment
     wires = route_avoiding((0, 0), (160, 64), obstacles)
     pts = [(wires[0].x1, wires[0].y1)] + [(w.x2, w.y2) for w in wires]
-    crossings, _ = _path_score(pts, obstacles)
+    _, crossings, _ = _path_score(pts, obstacles)
     assert crossings == 0

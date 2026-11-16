@@ -17,7 +17,7 @@ from typing import Any
 from wirewright.ir.model import Component, Flag, Schematic
 from wirewright.ir.validate import validate, validate_placed
 from wirewright.placers.base import Placer
-from wirewright.routing.orthogonal import l_shape
+from wirewright.routing.orthogonal import route_avoiding
 from wirewright.routing.rails import RailMode, emit_power_ground_rails
 from wirewright.symbols import absolute_pin_position, symbol_geometry
 
@@ -74,6 +74,18 @@ class NaivePlacer(Placer):
         out.wires = []
         out.flags = []
 
+        # Group all pin positions by net up front so router can avoid
+        # pins of other nets as point obstacles (prevents L-bend corners
+        # that silently short two nets at a shared coordinate).
+        pins_by_net: dict[str, list[tuple[int, int]]] = {}
+        for c in out.components:
+            for pn, nn in c.pins.items():
+                pins_by_net.setdefault(nn, []).append(
+                    absolute_pin_position(
+                        (c.x or 0, c.y or 0), c.symbol, pn, c.orientation
+                    )
+                )
+
         for net in out.nets:
             pins = net_pins.get(net.name, [])
             if not pins:
@@ -81,14 +93,22 @@ class NaivePlacer(Placer):
             if net.is_ground or net.name == "0" or net.is_power:
                 continue  # handled by emit_power_ground_rails below
 
-            # Ordinary signal net: connect pairwise pins with L-shaped wires.
-            positions = [
-                absolute_pin_position((c.x or 0, c.y or 0), c.symbol, p, c.orientation)
-                for c, p in pins
-            ]
+            # Ordinary signal net: connect pairwise pins avoiding other-net pins.
+            positions = pins_by_net.get(net.name, [])
+            other_pins: list[tuple[int, int]] = []
+            for other_net, pos_list in pins_by_net.items():
+                if other_net != net.name:
+                    other_pins.extend(pos_list)
             anchor = positions[0]
             for px, py in positions[1:]:
-                out.wires.extend(l_shape(anchor, (px, py)))
+                out.wires.extend(
+                    route_avoiding(
+                        anchor,
+                        (px, py),
+                        obstacles=[],
+                        pin_obstacles=other_pins,
+                    )
+                )
 
             # Label nets with two or more endpoints with an IO flag at the anchor
             # so the user can see which net is which.
