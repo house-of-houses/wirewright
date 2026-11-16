@@ -247,6 +247,22 @@ Depends on Task 6.
   `RuntimeError` if `OPENAI_API_KEY` is unset. CLI `--placer eeschematic`
   thus fails loudly without a key, cheaply.
 - `AutoPlacer` not changed. `eeschematic` is never in the auto chain.
+- Runtime tunables are env vars (read in `EEschematicPlacer.__init__`):
+  - `WIREWRIGHT_LLM_MAX_ITERS` (default `3`) — VCoT iteration cap.
+    Coerced to `>= 2` by the agent since iter 0 DONE is always ignored.
+    Bump to `4`–`5` for transistor fixtures where one critique round is
+    not enough.
+  - `WIREWRIGHT_LLM_BUDGET_USD` (default `20`) — per-fixture hard spend
+    cap. Raises `PlacerEngineError` when cumulative cost exceeds it.
+  - `WIREWRIGHT_LLM_MODEL` (default `gpt-5`) — overrides the chat model.
+    `gpt-4o` is the fallback if GPT-5 is unavailable.
+  - `WIREWRIGHT_LLM_PRICE_IN` / `_PRICE_OUT` (defaults `1.25` / `10.0`
+    per Mtok) — override pricing used for the cost-estimate column in
+    `calls.jsonl`. Published OpenAI pricing drifts; override to keep the
+    budget cap honest.
+- Per-fixture workdir defaults to `_cmp/<schematic-title>/` (or a
+  stable hash when no title). Each run truncates `calls.jsonl` first so
+  cost accounting doesn't mix stale entries across invocations.
 
 ### Task 9: Divider prove-out gate
 
